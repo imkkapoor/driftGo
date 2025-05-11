@@ -45,7 +45,8 @@ func SendMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	// Call the service function to send the magic link.
 	resp, err := SendMagicLink(r.Context(), req.Email)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("error sending magic link: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
