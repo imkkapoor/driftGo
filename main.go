@@ -2,7 +2,6 @@ package main
 
 import (
 	"driftGo/api/auth"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -28,7 +27,7 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	fmt.Println(`
+	log.Println(`
  ______     ______        ______     ______   __    
 /\  ___\   /\  __ \      /\  __ \   /\  == \ /\ \   
 \ \ \__ \  \ \ \/\ \     \ \  __ \  \ \  _-/ \ \ \  
