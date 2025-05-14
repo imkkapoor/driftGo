@@ -1,19 +1,40 @@
 package main
 
 import (
-	"os"
-	"log"
-	"net/http"
 	"driftGo/api/auth"
+	"net/http"
+	"os"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	log "github.com/sirupsen/logrus"
 )
 
-func main() {	
-	http.HandleFunc("/auth/create", auth.SendMagicLinkCall)
+func main() {
+
+	log.SetReportCaller(true)
+	var r *chi.Mux = chi.NewRouter()
+
+	// Middleware
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Route("/auth", func(r chi.Router) {
+		auth.SetupRoutes(r)
+	})
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
+	log.Println(`
+ ______     ______        ______     ______   __    
+/\  ___\   /\  __ \      /\  __ \   /\  == \ /\ \   
+\ \ \__ \  \ \ \/\ \     \ \  __ \  \ \  _-/ \ \ \  
+ \ \_____\  \ \_____\     \ \_\ \_\  \ \_\    \ \_\ 
+  \/_____/   \/_____/      \/_/\/_/   \/_/     \/_/
+   `)
 
 	log.Println("Server running on port", port)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
