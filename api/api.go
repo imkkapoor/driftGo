@@ -9,6 +9,11 @@ type SendInviteMagicLinkCallRequest struct {
 	Email string `json:"email"`
 }
 
+type SendCreateAccountMagicLinkCallRequest struct {
+	Email         string `json:"email"`
+	CodeChallenge string `json:"code_challenge"`
+}
+
 type SetPasswordBySessionCallRequest struct {
 	Password     string `json:"password"`
 	SessionToken string `json:"session_token"`
@@ -17,6 +22,7 @@ type SetPasswordBySessionCallRequest struct {
 type AuthenticateMagicLinkCallRequest struct {
 	Token           string `schema:"token"`
 	StytchTokenType string `schema:"stytch_token_type,omitempty"`
+	CodeVerifier    string `schema:"code_verifier"`
 }
 
 type LoginCallRequest struct {
