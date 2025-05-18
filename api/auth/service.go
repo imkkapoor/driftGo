@@ -5,10 +5,13 @@ import (
 	"log"
 	"os"
 
+	apiRequestStructs "driftGo/api"
 	"driftGo/config"
 
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks/email"
+	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords"
+	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords/session"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/stytchapi"
 )
 
@@ -22,18 +25,45 @@ func init() {
 	}
 }
 
-// SendMagicLink sends a magic link to the provided email address.
-func SendMagicLink(ctx context.Context, emailAddr string) (*email.SendResponse, error) {
-	params := &email.SendParams{
-		Email:             emailAddr,
-		LoginMagicLinkURL: os.Getenv("STYTCH_LOGIN_REDIRECT_URL"),
+func SendInviteMagicLink(ctx context.Context, sendInviteMagicLinkCallRequest apiRequestStructs.SendInviteMagicLinkCallRequest) (*email.InviteResponse, error) {
+
+	params := &email.InviteParams{
+		Email:                   sendInviteMagicLinkCallRequest.Email,
+		InviteMagicLinkURL:      os.Getenv("INVITE_MAGIC_LINK_URL"),
+		InviteExpirationMinutes: 10,
 	}
-	return serviceClient.MagicLinks.Email.Send(ctx, params)
+
+	return serviceClient.MagicLinks.Email.Invite(ctx, params)
 }
 
-func AuthenticateMagicLink(ctx context.Context, token string) (*magiclinks.AuthenticateResponse, error) {
-	params := &magiclinks.AuthenticateParams{
-		Token: token,
+func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest apiRequestStructs.SetPasswordBySessionCallRequest) (*session.ResetResponse, error) {
+
+	params := &session.ResetParams{
+		Password:               setPasswordBySessionCallRequest.Password,
+		SessionToken:           setPasswordBySessionCallRequest.SessionToken,
+		SessionDurationMinutes: 60,
 	}
+
+	return serviceClient.Passwords.Sessions.Reset(ctx, params)
+}
+
+func AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest apiRequestStructs.AuthenticateMagicLinkCallRequest) (*magiclinks.AuthenticateResponse, error) {
+
+	params := &magiclinks.AuthenticateParams{
+		Token:                  authenticateMagicLinkCallRequest.Token,
+		SessionDurationMinutes: 60,
+	}
+
 	return serviceClient.MagicLinks.Authenticate(ctx, params)
+}
+
+func Login(ctx context.Context, loginCallRequest apiRequestStructs.LoginCallRequest) (*passwords.AuthenticateResponse, error) {
+
+	params := &passwords.AuthenticateParams{
+		Email:                  loginCallRequest.Email,
+		Password:               loginCallRequest.Password,
+		SessionDurationMinutes: 60,
+	}
+
+	return serviceClient.Passwords.Authenticate(context.Background(), params)
 }
