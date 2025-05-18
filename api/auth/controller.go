@@ -67,7 +67,7 @@ func SetPasswordCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("seting password failed: %w", err))
+		api.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
 		return
 	}
 

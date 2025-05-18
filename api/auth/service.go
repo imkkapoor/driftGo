@@ -65,5 +65,5 @@ func Login(ctx context.Context, loginCallRequest apiRequestStructs.LoginCallRequ
 		SessionDurationMinutes: 60,
 	}
 
-	return serviceClient.Passwords.Authenticate(context.Background(), params)
+	return serviceClient.Passwords.Authenticate(ctx, params)
 }
