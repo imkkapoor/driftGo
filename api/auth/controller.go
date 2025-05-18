@@ -30,7 +30,7 @@ func SetupRoutes(r chi.Router) {
 }
 
 /*
-SendCreateAccountMagicLinkCall handles the request to send a create account magic link.
+sendCreateAccountMagicLinkCall handles the request to send a create account magic link.
 This is the main entry point for sending a magic link to create an account.
 It is used in the signup flow.
 The request body should contain the email and code challenge.
@@ -63,7 +63,7 @@ func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-SetPasswordCall handles the request to set a password for a user.
+setPasswordCall handles the request to set a password for a user.
 This is used in the password set flow.
 The request body should contain the password and session token.
 */
@@ -94,7 +94,7 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-AuthenticateMagicLinkCall handles the request to authenticate a magic link.
+authenticateMagicLinkCall handles the request to authenticate a magic link.
 This is used in the magic link login flow.
 */
 func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-LoginCall handles the request to log in a user.
+loginCall handles the request to log in a user.
 This is used in the password login flow.
 The request body should contain the email and password.
 */
@@ -156,7 +156,7 @@ func loginCall(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-SendInviteMagicLinkCall handles the request to send an invite magic link.
+sendInviteMagicLinkCall handles the request to send an invite magic link.
 This is used in the invite flow.
 The request body should contain the email.
 ** not used in the signup flow **

@@ -15,6 +15,9 @@ import (
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/stytchapi"
 )
 
+/*
+Logic for setting up the Stytch client and sending requests to the Stytch API.
+*/
 var serviceClient *stytchapi.API
 
 func init() {
