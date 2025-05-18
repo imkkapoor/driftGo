@@ -5,13 +5,23 @@ import (
 	"net/http"
 )
 
-type SendMagicLinkCallRequest struct {
+type SendInviteMagicLinkCallRequest struct {
 	Email string `json:"email"`
+}
+
+type SetPasswordBySessionCallRequest struct {
+	Password     string `json:"password"`
+	SessionToken string `json:"session_token"`
 }
 
 type AuthenticateMagicLinkCallRequest struct {
 	Token           string `schema:"token"`
 	StytchTokenType string `schema:"stytch_token_type,omitempty"`
+}
+
+type LoginCallRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type Error struct {
