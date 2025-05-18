@@ -15,6 +15,9 @@ import (
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/stytchapi"
 )
 
+/*
+Logic for setting up the Stytch client and sending requests to the Stytch API.
+*/
 var serviceClient *stytchapi.API
 
 func init() {
@@ -29,11 +32,24 @@ func SendInviteMagicLink(ctx context.Context, sendInviteMagicLinkCallRequest api
 
 	params := &email.InviteParams{
 		Email:                   sendInviteMagicLinkCallRequest.Email,
-		InviteMagicLinkURL:      os.Getenv("INVITE_MAGIC_LINK_URL"),
+		InviteMagicLinkURL:      os.Getenv("STYTCH_INVITE_REDIRECT_URL"),
 		InviteExpirationMinutes: 10,
 	}
 
 	return serviceClient.MagicLinks.Email.Invite(ctx, params)
+}
+
+func SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkCallRequest apiRequestStructs.SendCreateAccountMagicLinkCallRequest) (*email.LoginOrCreateResponse, error) {
+
+	params := &email.LoginOrCreateParams{
+		Email:                   sendCreateAccountMagicLinkCallRequest.Email,
+		CodeChallenge:           sendCreateAccountMagicLinkCallRequest.CodeChallenge,
+		CreateUserAsPending:     true,
+		SignupMagicLinkURL:      os.Getenv("STYTCH_SIGNUP_REDIRECT_URL"),
+		SignupExpirationMinutes: 10,
+	}
+
+	return serviceClient.MagicLinks.Email.LoginOrCreate(ctx, params)
 }
 
 func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest apiRequestStructs.SetPasswordBySessionCallRequest) (*session.ResetResponse, error) {
@@ -51,6 +67,7 @@ func AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest
 
 	params := &magiclinks.AuthenticateParams{
 		Token:                  authenticateMagicLinkCallRequest.Token,
+		CodeVerifier:           authenticateMagicLinkCallRequest.CodeVerifier,
 		SessionDurationMinutes: 60,
 	}
 
