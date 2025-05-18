@@ -19,25 +19,26 @@ func init() {
 }
 
 func SetupRoutes(r chi.Router) {
-	r.Post("/create", SendMagicLinkCall)
+	r.Post("/invite", SendInviteMagicLinkCall)
+	r.Post("/setPassword", SetPasswordCall)
+	r.Post("/login", LoginCall)
 	r.Get("/authenticate", AuthenticateMagicLinkCall)
 }
 
-func SendMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var sendMagicLinkCallRequest = api.SendMagicLinkCallRequest{}
+func SendInviteMagicLinkCall(w http.ResponseWriter, r *http.Request) {
+	var sendInviteMagicLinkCallRequest = api.SendInviteMagicLinkCallRequest{}
 
-	if err := json.NewDecoder(r.Body).Decode(&sendMagicLinkCallRequest); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&sendInviteMagicLinkCallRequest); err != nil {
 		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if sendMagicLinkCallRequest.Email == "" {
+	if sendInviteMagicLinkCallRequest.Email == "" {
 		api.RequestErrorHandler(w, fmt.Errorf("missing email field"))
 		return
 	}
 
-	// Call the service function to send the magic link.
-	resp, err := SendMagicLink(r.Context(), sendMagicLinkCallRequest.Email)
+	resp, err := SendInviteMagicLink(r.Context(), sendInviteMagicLinkCallRequest)
 	if err != nil {
 		log.Printf("error sending magic link: %v", err)
 		api.InternalErrorHandler(w)
@@ -51,6 +52,31 @@ func SendMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func SetPasswordCall(w http.ResponseWriter, r *http.Request) {
+	var setPasswordBySessionCallRequest = api.SetPasswordBySessionCallRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&setPasswordBySessionCallRequest); err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		return
+	}
+
+	if setPasswordBySessionCallRequest.Password == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("missing password field"))
+		return
+	}
+
+	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
+	if err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		api.InternalErrorHandler(w)
+		return
+	}
+}
 func AuthenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateMagicLinkCallRequest = api.AuthenticateMagicLinkCallRequest{}
 
@@ -64,12 +90,47 @@ func AuthenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest.Token)
+	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
 	if err != nil {
 		api.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
 
-	email := resp.User.Emails[0].Email
-	fmt.Fprintf(w, "<h1>Welcome, %s!</h1><p>You're now logged in 🎉</p>", email)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		api.InternalErrorHandler(w)
+		return
+	}
+}
+
+func LoginCall(w http.ResponseWriter, r *http.Request) {
+	var loginCallRequest = api.LoginCallRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&loginCallRequest); err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		return
+	}
+
+	if loginCallRequest.Email == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("missing email field"))
+		return
+	}
+
+	if loginCallRequest.Password == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("missing password field"))
+		return
+	}
+
+	resp, err := Login(r.Context(), loginCallRequest)
+	if err != nil {
+		log.Printf("error logging in: %v", err)
+		api.InternalErrorHandler(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		api.InternalErrorHandler(w)
+		return
+	}
 }
