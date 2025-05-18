@@ -18,29 +18,39 @@ func init() {
 	decoder.IgnoreUnknownKeys(true)
 }
 
+/*
+SetupRoutes sets up the routes for the auth package.
+It registers the handlers for the various auth-related endpoints.
+*/
 func SetupRoutes(r chi.Router) {
-	r.Post("/invite", SendInviteMagicLinkCall)
-	r.Post("/setPassword", SetPasswordCall)
-	r.Post("/login", LoginCall)
-	r.Get("/authenticate", AuthenticateMagicLinkCall)
+	r.Post("/create", sendCreateAccountMagicLinkCall)
+	r.Get("/authenticate", authenticateMagicLinkCall)
+	r.Post("/setPassword", setPasswordCall)
+	r.Post("/login", loginCall)
 }
 
-func SendInviteMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var sendInviteMagicLinkCallRequest = api.SendInviteMagicLinkCallRequest{}
+/*
+SendCreateAccountMagicLinkCall handles the request to send a create account magic link.
+This is the main entry point for sending a magic link to create an account.
+It is used in the signup flow.
+The request body should contain the email and code challenge.
+*/
+func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
+	var sendCreateAccountMagicLinkCallRequest = api.SendCreateAccountMagicLinkCallRequest{}
 
-	if err := json.NewDecoder(r.Body).Decode(&sendInviteMagicLinkCallRequest); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&sendCreateAccountMagicLinkCallRequest); err != nil {
 		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if sendInviteMagicLinkCallRequest.Email == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("missing email field"))
+	if sendCreateAccountMagicLinkCallRequest.Email == "" || sendCreateAccountMagicLinkCallRequest.CodeChallenge == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("email or code challenge is missing"))
 		return
 	}
 
-	resp, err := SendInviteMagicLink(r.Context(), sendInviteMagicLinkCallRequest)
+	resp, err := SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest)
 	if err != nil {
-		log.Printf("error sending magic link: %v", err)
+		log.Printf("error sending create account magic link: %v", err)
 		api.InternalErrorHandler(w)
 		return
 	}
@@ -52,7 +62,12 @@ func SendInviteMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func SetPasswordCall(w http.ResponseWriter, r *http.Request) {
+/*
+SetPasswordCall handles the request to set a password for a user.
+This is used in the password set flow.
+The request body should contain the password and session token.
+*/
+func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 	var setPasswordBySessionCallRequest = api.SetPasswordBySessionCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&setPasswordBySessionCallRequest); err != nil {
@@ -60,8 +75,8 @@ func SetPasswordCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if setPasswordBySessionCallRequest.Password == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("missing password field"))
+	if setPasswordBySessionCallRequest.Password == "" || setPasswordBySessionCallRequest.SessionToken == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("password or session token is missing"))
 		return
 	}
 
@@ -77,7 +92,12 @@ func SetPasswordCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-func AuthenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
+
+/*
+AuthenticateMagicLinkCall handles the request to authenticate a magic link.
+This is used in the magic link login flow.
+*/
+func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateMagicLinkCallRequest = api.AuthenticateMagicLinkCallRequest{}
 
 	if err := decoder.Decode(&authenticateMagicLinkCallRequest, r.URL.Query()); err != nil {
@@ -86,7 +106,7 @@ func AuthenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if authenticateMagicLinkCallRequest.Token == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("token is required"))
+		api.RequestErrorHandler(w, fmt.Errorf("token is missing"))
 		return
 	}
 
@@ -103,7 +123,12 @@ func AuthenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func LoginCall(w http.ResponseWriter, r *http.Request) {
+/*
+LoginCall handles the request to log in a user.
+This is used in the password login flow.
+The request body should contain the email and password.
+*/
+func loginCall(w http.ResponseWriter, r *http.Request) {
 	var loginCallRequest = api.LoginCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&loginCallRequest); err != nil {
@@ -111,13 +136,8 @@ func LoginCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if loginCallRequest.Email == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("missing email field"))
-		return
-	}
-
-	if loginCallRequest.Password == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("missing password field"))
+	if loginCallRequest.Email == "" || loginCallRequest.Password == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("email or password is missing"))
 		return
 	}
 
@@ -134,3 +154,38 @@ func LoginCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+/*
+SendInviteMagicLinkCall handles the request to send an invite magic link.
+This is used in the invite flow.
+The request body should contain the email.
+** not used in the signup flow **
+*/
+/*
+func sendInviteMagicLinkCall(w http.ResponseWriter, r *http.Request) {
+	var sendInviteMagicLinkCallRequest = api.SendInviteMagicLinkCallRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&sendInviteMagicLinkCallRequest); err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		return
+	}
+
+	if sendInviteMagicLinkCallRequest.Email == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("missing email field"))
+		return
+	}
+
+	resp, err := SendInviteMagicLink(r.Context(), sendInviteMagicLinkCallRequest)
+	if err != nil {
+		log.Printf("error sending invite magic link: %v", err)
+		api.InternalErrorHandler(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		api.InternalErrorHandler(w)
+		return
+	}
+}
+*/
