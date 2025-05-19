@@ -24,7 +24,7 @@ It registers the handlers for the various auth-related endpoints.
 */
 func SetupRoutes(r chi.Router) {
 	r.Post("/create", sendCreateAccountMagicLinkCall)
-	r.Route("/authnticate", func(r chi.Router) {
+	r.Route("/authenticate", func(r chi.Router) {
 		r.Post("/OAuth", authenticateOAuthCall)
 		r.Post("/magiclink", authenticateMagicLinkCall)
 	})
