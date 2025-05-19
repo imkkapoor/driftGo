@@ -24,9 +24,13 @@ It registers the handlers for the various auth-related endpoints.
 */
 func SetupRoutes(r chi.Router) {
 	r.Post("/create", sendCreateAccountMagicLinkCall)
-	r.Get("/authenticate", authenticateMagicLinkCall)
+	r.Route("/authnticate", func(r chi.Router) {
+		r.Post("/OAuth", authenticateOAuthCall)
+		r.Post("/magiclink", authenticateMagicLinkCall)
+	})
 	r.Post("/setPassword", setPasswordCall)
 	r.Post("/login", loginCall)
+	r.Post("/attachOAuth", attachOAuthCall)
 }
 
 /*
@@ -105,7 +109,12 @@ func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if authenticateMagicLinkCallRequest.Token == "" {
+	if authenticateMagicLinkCallRequest.StytchTokenType != "magiclink" {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid token type"))
+		return
+	}
+
+	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" {
 		api.RequestErrorHandler(w, fmt.Errorf("token is missing"))
 		return
 	}
@@ -156,28 +165,60 @@ func loginCall(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-sendInviteMagicLinkCall handles the request to send an invite magic link.
-This is used in the invite flow.
-The request body should contain the email.
-** not used in the signup flow **
+authenticateOAuthCall handles the request to authenticate an OAuth call.
+This is used in the OAuth login flow.
 */
-/*
-func sendInviteMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var sendInviteMagicLinkCallRequest = api.SendInviteMagicLinkCallRequest{}
+func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
+	var authenticateOAuthCallRequest = api.AuthenticateOAuthCallRequest{}
 
-	if err := json.NewDecoder(r.Body).Decode(&sendInviteMagicLinkCallRequest); err != nil {
+	if err := decoder.Decode(&authenticateOAuthCallRequest, r.URL.Query()); err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid query parameters: %w", err))
+		return
+	}
+
+	if authenticateOAuthCallRequest.StytchTokenType != "oauth" {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid token type"))
+		return
+	}
+
+	if authenticateOAuthCallRequest.Token == "" || authenticateOAuthCallRequest.StytchTokenType == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("token is missing"))
+		return
+	}
+
+	resp, err := AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
+	if err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		api.InternalErrorHandler(w)
+		return
+	}
+}
+
+/*
+attachOAuthCall handles the request to attach an OAuth call.
+This is used in the OAuth attach flow.
+*/
+func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
+	var attachOathCallRequest = api.AttachOathCallRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&attachOathCallRequest); err != nil {
 		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if sendInviteMagicLinkCallRequest.Email == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("missing email field"))
+	if attachOathCallRequest.Provider == "" || attachOathCallRequest.UserId == "" {
+		api.RequestErrorHandler(w, fmt.Errorf("provider or user id is missing"))
 		return
 	}
 
-	resp, err := SendInviteMagicLink(r.Context(), sendInviteMagicLinkCallRequest)
+	resp, err := AttachOAuth(r.Context(), attachOathCallRequest)
 	if err != nil {
-		log.Printf("error sending invite magic link: %v", err)
+		log.Printf("error attaching OAuth: %v", err)
 		api.InternalErrorHandler(w)
 		return
 	}
@@ -188,4 +229,3 @@ func sendInviteMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-*/

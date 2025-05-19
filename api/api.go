@@ -5,10 +5,6 @@ import (
 	"net/http"
 )
 
-type SendInviteMagicLinkCallRequest struct {
-	Email string `json:"email"`
-}
-
 type SendCreateAccountMagicLinkCallRequest struct {
 	Email         string `json:"email"`
 	CodeChallenge string `json:"code_challenge"`
@@ -28,6 +24,18 @@ type AuthenticateMagicLinkCallRequest struct {
 type LoginCallRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type AttachOathCallRequest struct {
+	Provider     string `json:"provider"`
+	UserId       string `json:"user_id"`
+	SessionToken string `json:"session_token"`
+}
+
+type AuthenticateOAuthCallRequest struct {
+	Token           string `schema:"token"`
+	StytchTokenType string `schema:"stytch_token_type,omitempty"`
+	CodeVerifier    string `schema:"code_verifier"`
 }
 
 type Error struct {
