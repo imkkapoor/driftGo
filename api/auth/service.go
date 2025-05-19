@@ -10,6 +10,7 @@ import (
 
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks/email"
+	"github.com/stytchauth/stytch-go/v16/stytch/consumer/oauth"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords/session"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/stytchapi"
@@ -26,17 +27,6 @@ func init() {
 	if err != nil {
 		log.Fatalf("failed to initialize Stytch client in service: %v", err)
 	}
-}
-
-func SendInviteMagicLink(ctx context.Context, sendInviteMagicLinkCallRequest apiRequestStructs.SendInviteMagicLinkCallRequest) (*email.InviteResponse, error) {
-
-	params := &email.InviteParams{
-		Email:                   sendInviteMagicLinkCallRequest.Email,
-		InviteMagicLinkURL:      os.Getenv("STYTCH_INVITE_REDIRECT_URL"),
-		InviteExpirationMinutes: 10,
-	}
-
-	return serviceClient.MagicLinks.Email.Invite(ctx, params)
 }
 
 func SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkCallRequest apiRequestStructs.SendCreateAccountMagicLinkCallRequest) (*email.LoginOrCreateResponse, error) {
@@ -83,4 +73,24 @@ func Login(ctx context.Context, loginCallRequest apiRequestStructs.LoginCallRequ
 	}
 
 	return serviceClient.Passwords.Authenticate(ctx, params)
+}
+
+func AttachOAuth(ctx context.Context, attachOAuthCallRequest apiRequestStructs.AttachOAuthCallRequest) (*oauth.AttachResponse, error) {
+
+	params := &oauth.AttachParams{
+		UserID:   attachOAuthCallRequest.UserId,
+		Provider: attachOAuthCallRequest.Provider,
+	}
+
+	return serviceClient.OAuth.Attach(ctx, params)
+}
+
+func AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest apiRequestStructs.AuthenticateOAuthCallRequest) (*oauth.AuthenticateResponse, error) {
+
+	params := &oauth.AuthenticateParams{
+		Token:        authenticateOAuthCallRequest.Token,
+		CodeVerifier: authenticateOAuthCallRequest.CodeVerifier,
+	}
+
+	return serviceClient.OAuth.Authenticate(ctx, params)
 }
