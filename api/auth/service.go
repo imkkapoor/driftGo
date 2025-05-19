@@ -75,11 +75,11 @@ func Login(ctx context.Context, loginCallRequest apiRequestStructs.LoginCallRequ
 	return serviceClient.Passwords.Authenticate(ctx, params)
 }
 
-func AttachOAuth(ctx context.Context, attachOathCallRequest apiRequestStructs.AttachOathCallRequest) (*oauth.AttachResponse, error) {
+func AttachOAuth(ctx context.Context, attachOAuthCallRequest apiRequestStructs.AttachOAuthCallRequest) (*oauth.AttachResponse, error) {
 
 	params := &oauth.AttachParams{
-		UserID:   attachOathCallRequest.UserId,
-		Provider: attachOathCallRequest.Provider,
+		UserID:   attachOAuthCallRequest.UserId,
+		Provider: attachOAuthCallRequest.Provider,
 	}
 
 	return serviceClient.OAuth.Attach(ctx, params)

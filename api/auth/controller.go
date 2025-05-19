@@ -204,19 +204,19 @@ attachOAuthCall handles the request to attach an OAuth call.
 This is used in the OAuth attach flow.
 */
 func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
-	var attachOathCallRequest = api.AttachOathCallRequest{}
+	var attachOAuthCallRequest = api.AttachOAuthCallRequest{}
 
-	if err := json.NewDecoder(r.Body).Decode(&attachOathCallRequest); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&attachOAuthCallRequest); err != nil {
 		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if attachOathCallRequest.Provider == "" || attachOathCallRequest.UserId == "" {
+	if attachOAuthCallRequest.Provider == "" || attachOAuthCallRequest.UserId == "" {
 		api.RequestErrorHandler(w, fmt.Errorf("provider or user id is missing"))
 		return
 	}
 
-	resp, err := AttachOAuth(r.Context(), attachOathCallRequest)
+	resp, err := AttachOAuth(r.Context(), attachOAuthCallRequest)
 	if err != nil {
 		log.Printf("error attaching OAuth: %v", err)
 		api.InternalErrorHandler(w)

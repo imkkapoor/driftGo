@@ -26,7 +26,7 @@ type LoginCallRequest struct {
 	Password string `json:"password"`
 }
 
-type AttachOathCallRequest struct {
+type AttachOAuthCallRequest struct {
 	Provider     string `json:"provider"`
 	UserId       string `json:"user_id"`
 	SessionToken string `json:"session_token"`
