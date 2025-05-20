@@ -86,6 +86,7 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
+		log.Printf("setting password failed:%v", err)
 		api.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
 		return
 	}
@@ -104,23 +105,19 @@ This is used in the magic link login flow.
 func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateMagicLinkCallRequest = api.AuthenticateMagicLinkCallRequest{}
 
-	if err := decoder.Decode(&authenticateMagicLinkCallRequest, r.URL.Query()); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid query parameters: %w", err))
+	if err := json.NewDecoder(r.Body).Decode(&authenticateMagicLinkCallRequest); err != nil {
+		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if authenticateMagicLinkCallRequest.StytchTokenType != "magiclink" {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid token type"))
-		return
-	}
-
-	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("token is missing"))
+	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" || authenticateMagicLinkCallRequest.StytchTokenType != "magic_links" {
+		api.RequestErrorHandler(w, fmt.Errorf("token or code_verifier is missing or the token type is invalid"))
 		return
 	}
 
 	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
 	if err != nil {
+		log.Printf("magic link authentication failed:%v", err)
 		api.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
@@ -188,6 +185,7 @@ func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
 	if err != nil {
+		log.Printf("OAuth authentication failed:%v", err)
 		api.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
