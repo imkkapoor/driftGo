@@ -17,7 +17,7 @@ type SetPasswordBySessionCallRequest struct {
 
 type AuthenticateMagicLinkCallRequest struct {
 	Token           string `json:"token"`
-	StytchTokenType string `json:"stytch_token_type,omitempty"`
+	StytchTokenType string `json:"stytch_token_type"`
 	CodeVerifier    string `json:"code_verifier"`
 }
 
