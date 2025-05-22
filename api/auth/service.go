@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 
-	apiRequestStructs "driftGo/api"
 	"driftGo/config"
 
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks"
@@ -13,6 +12,7 @@ import (
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/oauth"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords/session"
+	"github.com/stytchauth/stytch-go/v16/stytch/consumer/sessions"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/stytchapi"
 )
 
@@ -29,7 +29,7 @@ func init() {
 	}
 }
 
-func SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkCallRequest apiRequestStructs.SendCreateAccountMagicLinkCallRequest) (*email.LoginOrCreateResponse, error) {
+func SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkCallRequest SendCreateAccountMagicLinkCallRequest) (*email.LoginOrCreateResponse, error) {
 
 	params := &email.LoginOrCreateParams{
 		Email:                   sendCreateAccountMagicLinkCallRequest.Email,
@@ -42,7 +42,7 @@ func SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkC
 	return serviceClient.MagicLinks.Email.LoginOrCreate(ctx, params)
 }
 
-func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest apiRequestStructs.SetPasswordBySessionCallRequest) (*session.ResetResponse, error) {
+func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest SetPasswordBySessionCallRequest) (*session.ResetResponse, error) {
 
 	params := &session.ResetParams{
 		Password:               setPasswordBySessionCallRequest.Password,
@@ -53,7 +53,7 @@ func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest a
 	return serviceClient.Passwords.Sessions.Reset(ctx, params)
 }
 
-func AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest apiRequestStructs.AuthenticateMagicLinkCallRequest) (*magiclinks.AuthenticateResponse, error) {
+func AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest AuthenticateMagicLinkCallRequest) (*magiclinks.AuthenticateResponse, error) {
 
 	params := &magiclinks.AuthenticateParams{
 		Token:                  authenticateMagicLinkCallRequest.Token,
@@ -64,7 +64,7 @@ func AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest
 	return serviceClient.MagicLinks.Authenticate(ctx, params)
 }
 
-func Login(ctx context.Context, loginCallRequest apiRequestStructs.LoginCallRequest) (*passwords.AuthenticateResponse, error) {
+func Login(ctx context.Context, loginCallRequest LoginCallRequest) (*passwords.AuthenticateResponse, error) {
 
 	params := &passwords.AuthenticateParams{
 		Email:                  loginCallRequest.Email,
@@ -75,7 +75,16 @@ func Login(ctx context.Context, loginCallRequest apiRequestStructs.LoginCallRequ
 	return serviceClient.Passwords.Authenticate(ctx, params)
 }
 
-func AttachOAuth(ctx context.Context, attachOAuthCallRequest apiRequestStructs.AttachOAuthCallRequest) (*oauth.AttachResponse, error) {
+func Logout(ctx context.Context, logoutCallRequest LogoutCallRequest) (*sessions.RevokeResponse, error) {
+
+	params := &sessions.RevokeParams{
+		SessionToken: logoutCallRequest.SessionToken,
+	}
+
+	return serviceClient.Sessions.Revoke(ctx, params)
+}
+
+func AttachOAuth(ctx context.Context, attachOAuthCallRequest AttachOAuthCallRequest) (*oauth.AttachResponse, error) {
 
 	params := &oauth.AttachParams{
 		UserID:   attachOAuthCallRequest.UserId,
@@ -85,7 +94,7 @@ func AttachOAuth(ctx context.Context, attachOAuthCallRequest apiRequestStructs.A
 	return serviceClient.OAuth.Attach(ctx, params)
 }
 
-func AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest apiRequestStructs.AuthenticateOAuthCallRequest) (*oauth.AuthenticateResponse, error) {
+func AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest AuthenticateOAuthCallRequest) (*oauth.AuthenticateResponse, error) {
 
 	params := &oauth.AuthenticateParams{
 		Token:        authenticateOAuthCallRequest.Token,
@@ -93,4 +102,13 @@ func AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest apiRequ
 	}
 
 	return serviceClient.OAuth.Authenticate(ctx, params)
+}
+
+func AuthenticateSession(ctx context.Context, sessionToken string) (*sessions.AuthenticateResponse, error) {
+
+	params := &sessions.AuthenticateParams{
+		SessionToken: sessionToken,
+	}
+
+	return serviceClient.Sessions.Authenticate(ctx, params)
 }
