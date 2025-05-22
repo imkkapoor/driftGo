@@ -1,12 +1,14 @@
 package auth
 
 import (
+	"driftGo/api/errors"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
-	"driftGo/api"
+	log "github.com/sirupsen/logrus"
+
+	"driftGo/api/common"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
@@ -30,6 +32,7 @@ func SetupRoutes(r chi.Router) {
 	})
 	r.Post("/setPassword", setPasswordCall)
 	r.Post("/login", loginCall)
+	r.Post("/logout", logoutCall)
 	r.Post("/attachOAuth", attachOAuthCall)
 }
 
@@ -40,28 +43,28 @@ It is used in the signup flow.
 The request body should contain the email and code challenge.
 */
 func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var sendCreateAccountMagicLinkCallRequest = api.SendCreateAccountMagicLinkCallRequest{}
+	var sendCreateAccountMagicLinkCallRequest = SendCreateAccountMagicLinkCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&sendCreateAccountMagicLinkCallRequest); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
 	if sendCreateAccountMagicLinkCallRequest.Email == "" || sendCreateAccountMagicLinkCallRequest.CodeChallenge == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("email or code challenge is missing"))
+		errors.RequestErrorHandler(w, fmt.Errorf("email or code challenge is missing"))
 		return
 	}
 
 	resp, err := SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest)
 	if err != nil {
 		log.Printf("error sending create account magic link: %v", err)
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 }
@@ -72,28 +75,30 @@ This is used in the password set flow.
 The request body should contain the password and session token.
 */
 func setPasswordCall(w http.ResponseWriter, r *http.Request) {
-	var setPasswordBySessionCallRequest = api.SetPasswordBySessionCallRequest{}
+	var setPasswordBySessionCallRequest = SetPasswordBySessionCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&setPasswordBySessionCallRequest); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
+	setPasswordBySessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
+
 	if setPasswordBySessionCallRequest.Password == "" || setPasswordBySessionCallRequest.SessionToken == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("password or session token is missing"))
+		errors.RequestErrorHandler(w, fmt.Errorf("password or session token is missing"))
 		return
 	}
 
 	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
 		log.Printf("setting password failed:%v", err)
-		api.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 }
@@ -101,30 +106,31 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 /*
 authenticateMagicLinkCall handles the request to authenticate a magic link.
 This is used in the magic link login flow.
+The request body should contain the token, code verifier, and token type.
 */
 func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var authenticateMagicLinkCallRequest = api.AuthenticateMagicLinkCallRequest{}
+	var authenticateMagicLinkCallRequest = AuthenticateMagicLinkCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateMagicLinkCallRequest); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
 	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" || authenticateMagicLinkCallRequest.StytchTokenType != "magic_links" {
-		api.RequestErrorHandler(w, fmt.Errorf("token or code_verifier is missing or the token type is invalid"))
+		errors.RequestErrorHandler(w, fmt.Errorf("token or code_verifier is missing or the token type is invalid"))
 		return
 	}
 
 	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
 	if err != nil {
 		log.Printf("magic link authentication failed:%v", err)
-		api.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 }
@@ -135,28 +141,57 @@ This is used in the password login flow.
 The request body should contain the email and password.
 */
 func loginCall(w http.ResponseWriter, r *http.Request) {
-	var loginCallRequest = api.LoginCallRequest{}
+	var loginCallRequest = LoginCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&loginCallRequest); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
 	if loginCallRequest.Email == "" || loginCallRequest.Password == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("email or password is missing"))
+		errors.RequestErrorHandler(w, fmt.Errorf("email or password is missing"))
 		return
 	}
 
 	resp, err := Login(r.Context(), loginCallRequest)
 	if err != nil {
-		log.Printf("error logging in: %v", err)
-		api.InternalErrorHandler(w)
+		log.Warnf("error logging in: %v", err)
+		errors.InternalErrorHandler(w)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
+		return
+	}
+}
+
+/*
+logoutCall handles the request to log out a user.
+This is used in the logout flow.
+The request body should contain the session token.
+*/
+func logoutCall(w http.ResponseWriter, r *http.Request) {
+	var logoutCallRequest = LogoutCallRequest{}
+
+	logoutCallRequest.SessionToken = common.GetSessionToken(r.Context())
+
+	if logoutCallRequest.SessionToken == "" {
+		errors.RequestErrorHandler(w, fmt.Errorf("session_token is missing"))
+		return
+	}
+
+	resp, err := Logout(r.Context(), logoutCallRequest)
+	if err != nil {
+		log.Printf("error logging in: %v", err)
+		errors.InternalErrorHandler(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		errors.InternalErrorHandler(w)
 		return
 	}
 }
@@ -166,33 +201,28 @@ authenticateOAuthCall handles the request to authenticate an OAuth call.
 This is used in the OAuth login flow.
 */
 func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
-	var authenticateOAuthCallRequest = api.AuthenticateOAuthCallRequest{}
+	var authenticateOAuthCallRequest = AuthenticateOAuthCallRequest{}
 
 	if err := decoder.Decode(&authenticateOAuthCallRequest, r.URL.Query()); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid query parameters: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid query parameters: %w", err))
 		return
 	}
 
-	if authenticateOAuthCallRequest.StytchTokenType != "oauth" {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid token type"))
-		return
-	}
-
-	if authenticateOAuthCallRequest.Token == "" || authenticateOAuthCallRequest.StytchTokenType == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("token is missing"))
+	if authenticateOAuthCallRequest.Token == "" || authenticateOAuthCallRequest.StytchTokenType != "oauth" || authenticateOAuthCallRequest.CodeVerifier == "" {
+		errors.RequestErrorHandler(w, fmt.Errorf("token or code_verifier is missing or the token type is invalid"))
 		return
 	}
 
 	resp, err := AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
 	if err != nil {
 		log.Printf("OAuth authentication failed:%v", err)
-		api.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 }
@@ -202,28 +232,30 @@ attachOAuthCall handles the request to attach an OAuth call.
 This is used in the OAuth attach flow.
 */
 func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
-	var attachOAuthCallRequest = api.AttachOAuthCallRequest{}
+	var attachOAuthCallRequest = AttachOAuthCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&attachOAuthCallRequest); err != nil {
-		api.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if attachOAuthCallRequest.Provider == "" || attachOAuthCallRequest.UserId == "" {
-		api.RequestErrorHandler(w, fmt.Errorf("provider or user id is missing"))
+	attachOAuthCallRequest.SessionToken = common.GetSessionToken(r.Context())
+
+	if attachOAuthCallRequest.Provider == "" || attachOAuthCallRequest.UserId == "" || attachOAuthCallRequest.SessionToken == "" {
+		errors.RequestErrorHandler(w, fmt.Errorf("provider or user id is missing"))
 		return
 	}
 
 	resp, err := AttachOAuth(r.Context(), attachOAuthCallRequest)
 	if err != nil {
 		log.Printf("error attaching OAuth: %v", err)
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		api.InternalErrorHandler(w)
+		errors.InternalErrorHandler(w)
 		return
 	}
 }
