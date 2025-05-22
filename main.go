@@ -1,27 +1,38 @@
 package main
 
 import (
-	"driftGo/api/auth"
+	"driftGo/api"
 	"net/http"
 	"os"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	log "github.com/sirupsen/logrus"
 )
+
+type JustProjectNameFormatter struct {
+	log.TextFormatter
+}
+
+func (f *JustProjectNameFormatter) Format(entry *log.Entry) ([]byte, error) {
+	if entry.HasCaller() {
+		entry.Caller.File = "    driftGo"
+	}
+	return f.TextFormatter.Format(entry)
+}
 
 func main() {
 
 	log.SetReportCaller(true)
 	var r *chi.Mux = chi.NewRouter()
 
-	// Middleware
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-
-	r.Route("/auth", func(r chi.Router) {
-		auth.SetupRoutes(r)
+	log.SetFormatter(&JustProjectNameFormatter{
+		TextFormatter: log.TextFormatter{
+			FullTimestamp:   true,
+			TimestampFormat: "01/02 15:04:05",
+		},
 	})
+
+	api.SetupRoutes(r)
 
 	port := os.Getenv("PORT")
 	if port == "" {

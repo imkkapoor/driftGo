@@ -1,10 +1,8 @@
-package api
+package auth
 
-import (
-	"encoding/json"
-	"net/http"
-)
-
+/*
+Types for the auth package.
+*/
 type SendCreateAccountMagicLinkCallRequest struct {
 	Email         string `json:"email"`
 	CodeChallenge string `json:"code_challenge"`
@@ -26,6 +24,10 @@ type LoginCallRequest struct {
 	Password string `json:"password"`
 }
 
+type LogoutCallRequest struct {
+	SessionToken string `json:"session_token"`
+}
+
 type AttachOAuthCallRequest struct {
 	Provider     string `json:"provider"`
 	UserId       string `json:"user_id"`
@@ -38,28 +40,6 @@ type AuthenticateOAuthCallRequest struct {
 	CodeVerifier    string `schema:"code_verifier"`
 }
 
-type Error struct {
-	Code    int
-	Message string
+type AuthenticateSessionCallRequest struct {
+	SessionToken string `json:"session_token"`
 }
-
-func writeError(w http.ResponseWriter, message string, code int) {
-	resp := Error{
-		Code:    code,
-		Message: message,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-
-	json.NewEncoder(w).Encode(resp)
-}
-
-var (
-	RequestErrorHandler = func(w http.ResponseWriter, err error) {
-		writeError(w, err.Error(), http.StatusBadRequest)
-	}
-	InternalErrorHandler = func(w http.ResponseWriter) {
-		writeError(w, "An Unexpected Error Occurred.", http.StatusInternalServerError)
-	}
-)
