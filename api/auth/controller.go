@@ -57,7 +57,7 @@ func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest)
 	if err != nil {
-		log.Printf("error sending create account magic link: %v", err)
+		log.Warnf("error sending create account magic link: %v", err)
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -91,7 +91,7 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
-		log.Printf("setting password failed:%v", err)
+		log.Warnf("setting password failed:%v", err)
 		errors.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
 		return
 	}
@@ -123,7 +123,7 @@ func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
 	if err != nil {
-		log.Printf("magic link authentication failed:%v", err)
+		log.Warnf("magic link authentication failed:%v", err)
 		errors.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
@@ -184,7 +184,7 @@ func logoutCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := Logout(r.Context(), logoutCallRequest)
 	if err != nil {
-		log.Printf("error logging in: %v", err)
+		log.Warnf("error logging out: %v", err)
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -215,7 +215,7 @@ func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
 	if err != nil {
-		log.Printf("OAuth authentication failed:%v", err)
+		log.Warnf("OAuth authentication failed:%v", err)
 		errors.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
 		return
 	}
@@ -248,7 +248,7 @@ func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := AttachOAuth(r.Context(), attachOAuthCallRequest)
 	if err != nil {
-		log.Printf("error attaching OAuth: %v", err)
+		log.Warnf("error attaching OAuth: %v", err)
 		errors.InternalErrorHandler(w)
 		return
 	}
