@@ -34,7 +34,6 @@ This middleware is used to protect routes that require authentication.
 */
 func AuthenticateSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Infof("request path: %s", r.URL.Path)
 
 		if isPublicRoute(r.URL.Path) {
 			next.ServeHTTP(w, r)
@@ -42,7 +41,6 @@ func AuthenticateSession(next http.Handler) http.Handler {
 		}
 
 		authHeader := r.Header.Get("Authorization")
-		log.Infof("auth header: %s", authHeader)
 
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
 			log.Warn("missing or malformed Authorization header")
