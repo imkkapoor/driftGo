@@ -10,22 +10,12 @@ import (
 	"net/http"
 )
 
-// Error represents a standard API error response
 type Error struct {
 	StatusCode int    `json:"status_code"`
 	Message    string `json:"message"`
 	Code       string `json:"code,omitempty"`
 }
 
-// NewError creates a new Error with the given status code and message
-func NewError(statusCode int, message string) *Error {
-	return &Error{
-		StatusCode: statusCode,
-		Message:    message,
-	}
-}
-
-// NewErrorWithCode creates a new Error with status code, message and error code
 func NewErrorWithCode(statusCode int, message, code string) *Error {
 	return &Error{
 		StatusCode: statusCode,
@@ -34,12 +24,10 @@ func NewErrorWithCode(statusCode int, message, code string) *Error {
 	}
 }
 
-// Error implements the error interface
 func (e *Error) Error() string {
 	return fmt.Sprintf("%s (status: %d)", e.Message, e.StatusCode)
 }
 
-// Common error codes
 const (
 	ErrCodeInvalidRequest  = "INVALID_REQUEST"
 	ErrCodeUnauthorized    = "UNAUTHORIZED"
@@ -48,9 +36,9 @@ const (
 	ErrCodeInternalError   = "INTERNAL_ERROR"
 	ErrCodeValidationError = "VALIDATION_ERROR"
 	ErrCodeAuthentication  = "AUTHENTICATION_ERROR"
+	ErrCodeInvalidFormat   = "INVALID_FORMAT"
 )
 
-// Common error messages
 const (
 	MsgInvalidRequest  = "The request was invalid or malformed"
 	MsgUnauthorized    = "You are not authorized to perform this action"
@@ -59,6 +47,7 @@ const (
 	MsgInternalError   = "An unexpected error occurred. Please try again later"
 	MsgValidationError = "The request failed validation"
 	MsgAuthentication  = "Authentication failed"
+	MsgInvalidFormat   = "Invalid request format"
 )
 
 func writeError(w http.ResponseWriter, err *Error) {
@@ -67,7 +56,9 @@ func writeError(w http.ResponseWriter, err *Error) {
 	json.NewEncoder(w).Encode(err)
 }
 
-// Error handlers
+/*
+Some predefined error handlers.
+*/
 var (
 	RequestErrorHandler = func(w http.ResponseWriter, err error) {
 		var apiErr *Error
@@ -97,5 +88,9 @@ var (
 
 	ValidationErrorHandler = func(w http.ResponseWriter, message string) {
 		writeError(w, NewErrorWithCode(http.StatusBadRequest, message, ErrCodeValidationError))
+	}
+
+	NewInvalidFormatError = func() *Error {
+		return NewErrorWithCode(http.StatusBadRequest, MsgInvalidFormat, ErrCodeInvalidFormat)
 	}
 )

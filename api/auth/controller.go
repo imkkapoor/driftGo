@@ -45,7 +45,7 @@ func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var sendCreateAccountMagicLinkCallRequest = SendCreateAccountMagicLinkCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&sendCreateAccountMagicLinkCallRequest); err != nil {
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
@@ -77,7 +77,7 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 	var setPasswordBySessionCallRequest = SetPasswordBySessionCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&setPasswordBySessionCallRequest); err != nil {
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
@@ -111,7 +111,7 @@ func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateMagicLinkCallRequest = AuthenticateMagicLinkCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateMagicLinkCallRequest); err != nil {
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
@@ -148,7 +148,7 @@ func loginCall(w http.ResponseWriter, r *http.Request) {
 	var loginCallRequest = LoginCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&loginCallRequest); err != nil {
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
@@ -208,7 +208,7 @@ func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateOAuthCallRequest = AuthenticateOAuthCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateOAuthCallRequest); err != nil {
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
@@ -244,7 +244,7 @@ func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 	var attachOAuthCallRequest = AttachOAuthCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&attachOAuthCallRequest); err != nil {
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
