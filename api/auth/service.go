@@ -97,8 +97,7 @@ func AttachOAuth(ctx context.Context, attachOAuthCallRequest AttachOAuthCallRequ
 func AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest AuthenticateOAuthCallRequest) (*oauth.AuthenticateResponse, error) {
 
 	params := &oauth.AuthenticateParams{
-		Token:        authenticateOAuthCallRequest.Token,
-		CodeVerifier: authenticateOAuthCallRequest.CodeVerifier,
+		Token: authenticateOAuthCallRequest.Token,
 	}
 
 	return serviceClient.OAuth.Authenticate(ctx, params)
