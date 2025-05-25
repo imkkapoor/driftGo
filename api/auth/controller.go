@@ -203,13 +203,13 @@ This is used in the OAuth login flow.
 func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateOAuthCallRequest = AuthenticateOAuthCallRequest{}
 
-	if err := decoder.Decode(&authenticateOAuthCallRequest, r.URL.Query()); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid query parameters: %w", err))
+	if err := json.NewDecoder(r.Body).Decode(&authenticateOAuthCallRequest); err != nil {
+		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
 		return
 	}
 
-	if authenticateOAuthCallRequest.Token == "" || authenticateOAuthCallRequest.StytchTokenType != "oauth" || authenticateOAuthCallRequest.CodeVerifier == "" {
-		errors.RequestErrorHandler(w, fmt.Errorf("token or code_verifier is missing or the token type is invalid"))
+	if authenticateOAuthCallRequest.Token == "" || authenticateOAuthCallRequest.StytchTokenType != "oauth" {
+		errors.RequestErrorHandler(w, fmt.Errorf("token is missing or the token type is invalid"))
 		return
 	}
 
