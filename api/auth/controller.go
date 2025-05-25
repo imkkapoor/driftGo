@@ -3,7 +3,6 @@ package auth
 import (
 	"driftGo/api/errors"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
@@ -46,12 +45,12 @@ func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var sendCreateAccountMagicLinkCallRequest = SendCreateAccountMagicLinkCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&sendCreateAccountMagicLinkCallRequest); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
 		return
 	}
 
 	if sendCreateAccountMagicLinkCallRequest.Email == "" || sendCreateAccountMagicLinkCallRequest.CodeChallenge == "" {
-		errors.RequestErrorHandler(w, fmt.Errorf("email or code challenge is missing"))
+		errors.ValidationErrorHandler(w, "Email and code challenge are required")
 		return
 	}
 
@@ -78,21 +77,21 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 	var setPasswordBySessionCallRequest = SetPasswordBySessionCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&setPasswordBySessionCallRequest); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
 		return
 	}
 
 	setPasswordBySessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
 
 	if setPasswordBySessionCallRequest.Password == "" || setPasswordBySessionCallRequest.SessionToken == "" {
-		errors.RequestErrorHandler(w, fmt.Errorf("password or session token is missing"))
+		errors.ValidationErrorHandler(w, "Password and session token are required")
 		return
 	}
 
 	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
-		log.Warnf("setting password failed:%v", err)
-		errors.RequestErrorHandler(w, fmt.Errorf("setting password failed: %w", err))
+		log.Warnf("setting password failed: %v", err)
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Failed to set password. Please try again.", errors.ErrCodeAuthentication))
 		return
 	}
 
@@ -112,19 +111,24 @@ func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateMagicLinkCallRequest = AuthenticateMagicLinkCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateMagicLinkCallRequest); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
 		return
 	}
 
-	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" || authenticateMagicLinkCallRequest.StytchTokenType != "magic_links" {
-		errors.RequestErrorHandler(w, fmt.Errorf("token or code_verifier is missing or the token type is invalid"))
+	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" {
+		errors.ValidationErrorHandler(w, "Token and code verifier are required")
+		return
+	}
+
+	if authenticateMagicLinkCallRequest.StytchTokenType != "magic_links" {
+		errors.ValidationErrorHandler(w, "Invalid token type. Expected 'magic_links'")
 		return
 	}
 
 	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
 	if err != nil {
-		log.Warnf("magic link authentication failed:%v", err)
-		errors.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
+		log.Warnf("magic link authentication failed: %v", err)
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Magic link authentication failed", errors.ErrCodeAuthentication))
 		return
 	}
 
@@ -144,19 +148,19 @@ func loginCall(w http.ResponseWriter, r *http.Request) {
 	var loginCallRequest = LoginCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&loginCallRequest); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
 		return
 	}
 
 	if loginCallRequest.Email == "" || loginCallRequest.Password == "" {
-		errors.RequestErrorHandler(w, fmt.Errorf("email or password is missing"))
+		errors.ValidationErrorHandler(w, "Email and password are required")
 		return
 	}
 
 	resp, err := Login(r.Context(), loginCallRequest)
 	if err != nil {
 		log.Warnf("error logging in: %v", err)
-		errors.InternalErrorHandler(w)
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid email or password", errors.ErrCodeAuthentication))
 		return
 	}
 
@@ -178,7 +182,7 @@ func logoutCall(w http.ResponseWriter, r *http.Request) {
 	logoutCallRequest.SessionToken = common.GetSessionToken(r.Context())
 
 	if logoutCallRequest.SessionToken == "" {
-		errors.RequestErrorHandler(w, fmt.Errorf("session_token is missing"))
+		errors.UnauthorizedErrorHandler(w, "No active session found")
 		return
 	}
 
@@ -204,19 +208,24 @@ func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
 	var authenticateOAuthCallRequest = AuthenticateOAuthCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateOAuthCallRequest); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
 		return
 	}
 
-	if authenticateOAuthCallRequest.Token == "" || authenticateOAuthCallRequest.StytchTokenType != "oauth" {
-		errors.RequestErrorHandler(w, fmt.Errorf("token is missing or the token type is invalid"))
+	if authenticateOAuthCallRequest.Token == "" {
+		errors.ValidationErrorHandler(w, "OAuth token is required")
+		return
+	}
+
+	if authenticateOAuthCallRequest.StytchTokenType != "oauth" {
+		errors.ValidationErrorHandler(w, "Invalid token type. Expected 'oauth'")
 		return
 	}
 
 	resp, err := AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
 	if err != nil {
-		log.Warnf("OAuth authentication failed:%v", err)
-		errors.RequestErrorHandler(w, fmt.Errorf("authentication failed: %w", err))
+		log.Warnf("OAuth authentication failed: %v", err)
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "OAuth authentication failed", errors.ErrCodeAuthentication))
 		return
 	}
 
@@ -235,14 +244,19 @@ func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 	var attachOAuthCallRequest = AttachOAuthCallRequest{}
 
 	if err := json.NewDecoder(r.Body).Decode(&attachOAuthCallRequest); err != nil {
-		errors.RequestErrorHandler(w, fmt.Errorf("invalid json body: %w", err))
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid request format", errors.ErrCodeValidationError))
 		return
 	}
 
 	attachOAuthCallRequest.SessionToken = common.GetSessionToken(r.Context())
 
-	if attachOAuthCallRequest.Provider == "" || attachOAuthCallRequest.UserId == "" || attachOAuthCallRequest.SessionToken == "" {
-		errors.RequestErrorHandler(w, fmt.Errorf("provider or user id is missing"))
+	if attachOAuthCallRequest.Provider == "" || attachOAuthCallRequest.UserId == "" {
+		errors.ValidationErrorHandler(w, "Provider and user ID are required")
+		return
+	}
+
+	if attachOAuthCallRequest.SessionToken == "" {
+		errors.UnauthorizedErrorHandler(w, "No active session found")
 		return
 	}
 
