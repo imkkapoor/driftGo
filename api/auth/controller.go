@@ -89,6 +89,11 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if setPasswordBySessionCallRequest.SessionDurationMinutes < 5 || setPasswordBySessionCallRequest.SessionDurationMinutes > 525600 {
+		errors.ValidationErrorHandler(w, "Session duration has an invalid value")
+		return
+	}
+
 	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
 		log.Warnf("setting password failed: %v", err)
@@ -289,8 +294,13 @@ func extendSessionCall(w http.ResponseWriter, r *http.Request) {
 
 	extendSessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
 
-	if extendSessionCallRequest.SessionToken == "" {
+	if extendSessionCallRequest.SessionToken == "" || extendSessionCallRequest.SessionDurationMinutes == 0 {
 		errors.UnauthorizedErrorHandler(w, "No active session found")
+		return
+	}
+
+	if extendSessionCallRequest.SessionDurationMinutes < 5 || extendSessionCallRequest.SessionDurationMinutes > 525600 {
+		errors.ValidationErrorHandler(w, "Session duration has an invalid value")
 		return
 	}
 
