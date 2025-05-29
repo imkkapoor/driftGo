@@ -9,8 +9,9 @@ type SendCreateAccountMagicLinkCallRequest struct {
 }
 
 type SetPasswordBySessionCallRequest struct {
-	Password     string `json:"password"`
-	SessionToken string `json:"session_token"`
+	Password               string `json:"password"`
+	SessionToken           string `json:"session_token"`
+	SessionDurationMinutes int32  `json:"session_duration_minutes"`
 }
 
 type AuthenticateMagicLinkCallRequest struct {
@@ -41,4 +42,9 @@ type AuthenticateOAuthCallRequest struct {
 
 type AuthenticateSessionCallRequest struct {
 	SessionToken string `json:"session_token"`
+}
+
+type ExtendSessionCallRequest struct {
+	SessionToken           string `json:"session_token"`
+	SessionDurationMinutes int32  `json:"session_duration_minutes"`
 }
