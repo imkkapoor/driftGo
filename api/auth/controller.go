@@ -33,6 +33,7 @@ func SetupRoutes(r chi.Router) {
 	r.Post("/login", loginCall)
 	r.Post("/logout", logoutCall)
 	r.Post("/attachOAuth", attachOAuthCall)
+	r.Post("/extendSession", extendSessionCall)
 }
 
 /*
@@ -83,8 +84,8 @@ func setPasswordCall(w http.ResponseWriter, r *http.Request) {
 
 	setPasswordBySessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
 
-	if setPasswordBySessionCallRequest.Password == "" || setPasswordBySessionCallRequest.SessionToken == "" {
-		errors.ValidationErrorHandler(w, "Password and session token are required")
+	if setPasswordBySessionCallRequest.Password == "" || setPasswordBySessionCallRequest.SessionToken == "" || setPasswordBySessionCallRequest.SessionDurationMinutes == 0 {
+		errors.ValidationErrorHandler(w, "Password, duration, and session token are required")
 		return
 	}
 
@@ -263,6 +264,39 @@ func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 	resp, err := AttachOAuth(r.Context(), attachOAuthCallRequest)
 	if err != nil {
 		log.Warnf("error attaching OAuth: %v", err)
+		errors.InternalErrorHandler(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		errors.InternalErrorHandler(w)
+		return
+	}
+}
+
+/*
+extendSessionCall handles the request to extend a session.
+This is used to extend the session duration.
+*/
+func extendSessionCall(w http.ResponseWriter, r *http.Request) {
+	var extendSessionCallRequest = ExtendSessionCallRequest{}
+
+	if err := json.NewDecoder(r.Body).Decode(&extendSessionCallRequest); err != nil {
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
+		return
+	}
+
+	extendSessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
+
+	if extendSessionCallRequest.SessionToken == "" {
+		errors.UnauthorizedErrorHandler(w, "No active session found")
+		return
+	}
+
+	resp, err := ExtendSession(r.Context(), extendSessionCallRequest)
+	if err != nil {
+		log.Warnf("error extending session: %v", err)
 		errors.InternalErrorHandler(w)
 		return
 	}

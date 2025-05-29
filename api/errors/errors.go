@@ -40,14 +40,14 @@ const (
 )
 
 const (
-	MsgInvalidRequest  = "The request was invalid or malformed"
-	MsgUnauthorized    = "You are not authorized to perform this action"
-	MsgForbidden       = "You don't have permission to access this resource"
-	MsgNotFound        = "The requested resource was not found"
-	MsgInternalError   = "An unexpected error occurred. Please try again later"
-	MsgValidationError = "The request failed validation"
-	MsgAuthentication  = "Authentication failed"
-	MsgInvalidFormat   = "Invalid request format"
+	MsgInvalidRequest  = "The request was invalid or malformed!"
+	MsgUnauthorized    = "You are not authorized to perform this action!"
+	MsgForbidden       = "You don't have permission to access this resource!"
+	MsgNotFound        = "The requested resource was not found!"
+	MsgInternalError   = "An unexpected error occurred. Please try again later!"
+	MsgValidationError = "The request failed validation!"
+	MsgAuthentication  = "Authentication failed!"
+	MsgInvalidFormat   = "Invalid request format!"
 )
 
 func writeError(w http.ResponseWriter, err *Error) {

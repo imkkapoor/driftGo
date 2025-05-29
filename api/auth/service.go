@@ -47,7 +47,7 @@ func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest S
 	params := &session.ResetParams{
 		Password:               setPasswordBySessionCallRequest.Password,
 		SessionToken:           setPasswordBySessionCallRequest.SessionToken,
-		SessionDurationMinutes: 60,
+		SessionDurationMinutes: setPasswordBySessionCallRequest.SessionDurationMinutes,
 	}
 
 	return serviceClient.Passwords.Sessions.Reset(ctx, params)
@@ -107,6 +107,16 @@ func AuthenticateSession(ctx context.Context, sessionToken string) (*sessions.Au
 
 	params := &sessions.AuthenticateParams{
 		SessionToken: sessionToken,
+	}
+
+	return serviceClient.Sessions.Authenticate(ctx, params)
+}
+
+func ExtendSession(ctx context.Context, extendSessionCallRequest ExtendSessionCallRequest) (*sessions.AuthenticateResponse, error) {
+
+	params := &sessions.AuthenticateParams{
+		SessionToken:           extendSessionCallRequest.SessionToken,
+		SessionDurationMinutes: extendSessionCallRequest.SessionDurationMinutes,
 	}
 
 	return serviceClient.Sessions.Authenticate(ctx, params)
