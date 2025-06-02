@@ -1,0 +1,82 @@
+package link
+
+import (
+	"driftGo/api/common/errors"
+	"driftGo/api/common/validation"
+	"encoding/json"
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	log "github.com/sirupsen/logrus"
+)
+
+/*
+Handler holds the service instance for handling Plaid link-related operations
+*/
+type Handler struct {
+	service *Service
+}
+
+/*
+SetupRoutes sets up the routes for the link package.
+It registers the handlers for the various Plaid link-related endpoints.
+*/
+func SetupRoutes(r chi.Router, service *Service) {
+	handler := &Handler{service: service}
+	r.Post("/create", handler.createLinkToken)
+	r.Post("/exchange", handler.exchangePublicToken)
+}
+
+/*
+createLinkToken handles the request to create a new Plaid link token.
+This is used to initialize the Plaid Link interface for a user.
+The link token is required to start the Plaid Link flow.
+*/
+func (h *Handler) createLinkToken(w http.ResponseWriter, r *http.Request) {
+	linkToken, err := h.service.CreateLinkToken(r.Context())
+	if err != nil {
+		log.WithError(err).Error("Failed to create link token")
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusInternalServerError, "Failed to create link token", errors.ErrCodeInternalError))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(linkToken); err != nil {
+		log.WithError(err).Error("Failed to encode link token response")
+		errors.InternalErrorHandler(w)
+		return
+	}
+}
+
+/*
+exchangePublicToken handles the request to exchange a public token for an access token.
+This is used after a user successfully links their bank account through Plaid Link.
+The public token is exchanged for an access token that can be used to access the user's bank account data.
+*/
+func (h *Handler) exchangePublicToken(w http.ResponseWriter, r *http.Request) {
+	var exchangePublicTokenCallRequest ExchangePublicTokenCallRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&exchangePublicTokenCallRequest); err != nil {
+		log.WithError(err).Error("Failed to decode exchange token request")
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
+		return
+	}
+
+	if !validation.ValidateRequest(w, exchangePublicTokenCallRequest) {
+		return
+	}
+
+	response, err := h.service.ExchangePublicToken(r.Context(), exchangePublicTokenCallRequest)
+	if err != nil {
+		log.WithError(err).Error("Failed to exchange public token")
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusInternalServerError, "Failed to exchange public token", errors.ErrCodeInternalError))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.WithError(err).Error("Failed to encode exchange token response")
+		errors.InternalErrorHandler(w)
+		return
+	}
+}

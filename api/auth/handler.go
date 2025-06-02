@@ -1,13 +1,12 @@
 package auth
 
 import (
-	"driftGo/api/errors"
+	"driftGo/api/common/errors"
+	"driftGo/api/common/validation"
 	"encoding/json"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
-
-	"driftGo/api/common"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
@@ -23,17 +22,25 @@ func init() {
 SetupRoutes sets up the routes for the auth package.
 It registers the handlers for the various auth-related endpoints.
 */
-func SetupRoutes(r chi.Router) {
-	r.Post("/create", sendCreateAccountMagicLinkCall)
+func SetupRoutes(r chi.Router, service *Service) {
+	handler := &Handler{service: service}
+	r.Post("/create", handler.sendCreateAccountMagicLinkCall)
 	r.Route("/authenticate", func(r chi.Router) {
-		r.Post("/OAuth", authenticateOAuthCall)
-		r.Post("/magiclink", authenticateMagicLinkCall)
+		r.Post("/OAuth", handler.authenticateOAuthCall)
+		r.Post("/magiclink", handler.authenticateMagicLinkCall)
 	})
-	r.Post("/setPassword", setPasswordCall)
-	r.Post("/login", loginCall)
-	r.Post("/logout", logoutCall)
-	r.Post("/attachOAuth", attachOAuthCall)
-	r.Post("/extendSession", extendSessionCall)
+	r.Post("/setPassword", handler.setPasswordCall)
+	r.Post("/login", handler.loginCall)
+	r.Post("/logout", handler.logoutCall)
+	r.Post("/attachOAuth", handler.attachOAuthCall)
+	r.Post("/extendSession", handler.extendSessionCall)
+}
+
+/*
+Handler holds the service instance
+*/
+type Handler struct {
+	service *Service
 }
 
 /*
@@ -42,22 +49,21 @@ This is the main entry point for sending a magic link to create an account.
 It is used in the signup flow.
 The request body should contain the email and code challenge.
 */
-func sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var sendCreateAccountMagicLinkCallRequest = SendCreateAccountMagicLinkCallRequest{}
+func (h *Handler) sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.Request) {
+	var sendCreateAccountMagicLinkCallRequest SendCreateAccountMagicLinkCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&sendCreateAccountMagicLinkCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	if sendCreateAccountMagicLinkCallRequest.Email == "" || sendCreateAccountMagicLinkCallRequest.CodeChallenge == "" {
-		errors.ValidationErrorHandler(w, "Email and code challenge are required")
+	if !validation.ValidateRequest(w, sendCreateAccountMagicLinkCallRequest) {
 		return
 	}
 
-	resp, err := SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest)
+	resp, err := h.service.SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest)
 	if err != nil {
-		log.Warnf("error sending create account magic link: %v", err)
+		log.WithError(err).Error("Failed to send create account magic link")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -74,29 +80,21 @@ setPasswordCall handles the request to set a password for a user.
 This is used in the password set flow.
 The request body should contain the password and session token.
 */
-func setPasswordCall(w http.ResponseWriter, r *http.Request) {
-	var setPasswordBySessionCallRequest = SetPasswordBySessionCallRequest{}
+func (h *Handler) setPasswordCall(w http.ResponseWriter, r *http.Request) {
+	var setPasswordBySessionCallRequest SetPasswordBySessionCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&setPasswordBySessionCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	setPasswordBySessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
-
-	if setPasswordBySessionCallRequest.Password == "" || setPasswordBySessionCallRequest.SessionToken == "" || setPasswordBySessionCallRequest.SessionDurationMinutes == 0 {
-		errors.ValidationErrorHandler(w, "Password, duration, and session token are required")
+	if !validation.ValidateRequest(w, setPasswordBySessionCallRequest) {
 		return
 	}
 
-	if setPasswordBySessionCallRequest.SessionDurationMinutes < 5 || setPasswordBySessionCallRequest.SessionDurationMinutes > 525600 {
-		errors.ValidationErrorHandler(w, "Session duration has an invalid value")
-		return
-	}
-
-	resp, err := SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
+	resp, err := h.service.SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
 	if err != nil {
-		log.Warnf("setting password failed: %v", err)
+		log.WithError(err).Error("Failed to set password")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Failed to set password. Please try again.", errors.ErrCodeAuthentication))
 		return
 	}
@@ -113,27 +111,21 @@ authenticateMagicLinkCall handles the request to authenticate a magic link.
 This is used in the magic link login flow.
 The request body should contain the token, code verifier, and token type.
 */
-func authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
-	var authenticateMagicLinkCallRequest = AuthenticateMagicLinkCallRequest{}
+func (h *Handler) authenticateMagicLinkCall(w http.ResponseWriter, r *http.Request) {
+	var authenticateMagicLinkCallRequest AuthenticateMagicLinkCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateMagicLinkCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	if authenticateMagicLinkCallRequest.Token == "" || authenticateMagicLinkCallRequest.CodeVerifier == "" {
-		errors.ValidationErrorHandler(w, "Token and code verifier are required")
+	if !validation.ValidateRequest(w, authenticateMagicLinkCallRequest) {
 		return
 	}
 
-	if authenticateMagicLinkCallRequest.StytchTokenType != "magic_links" {
-		errors.ValidationErrorHandler(w, "Invalid token type. Expected 'magic_links'")
-		return
-	}
-
-	resp, err := AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
+	resp, err := h.service.AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
 	if err != nil {
-		log.Warnf("magic link authentication failed: %v", err)
+		log.WithError(err).Error("Failed to authenticate magic link")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Magic link authentication failed", errors.ErrCodeAuthentication))
 		return
 	}
@@ -150,22 +142,21 @@ loginCall handles the request to log in a user.
 This is used in the password login flow.
 The request body should contain the email and password.
 */
-func loginCall(w http.ResponseWriter, r *http.Request) {
-	var loginCallRequest = LoginCallRequest{}
+func (h *Handler) loginCall(w http.ResponseWriter, r *http.Request) {
+	var loginCallRequest LoginCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&loginCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	if loginCallRequest.Email == "" || loginCallRequest.Password == "" {
-		errors.ValidationErrorHandler(w, "Email and password are required")
+	if !validation.ValidateRequest(w, loginCallRequest) {
 		return
 	}
 
-	resp, err := Login(r.Context(), loginCallRequest)
+	resp, err := h.service.Login(r.Context(), loginCallRequest)
 	if err != nil {
-		log.Warnf("error logging in: %v", err)
+		log.WithError(err).Error("Failed to login")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid email or password", errors.ErrCodeAuthentication))
 		return
 	}
@@ -182,19 +173,11 @@ logoutCall handles the request to log out a user.
 This is used in the logout flow.
 The request body should contain the session token.
 */
-func logoutCall(w http.ResponseWriter, r *http.Request) {
-	var logoutCallRequest = LogoutCallRequest{}
+func (h *Handler) logoutCall(w http.ResponseWriter, r *http.Request) {
 
-	logoutCallRequest.SessionToken = common.GetSessionToken(r.Context())
-
-	if logoutCallRequest.SessionToken == "" {
-		errors.UnauthorizedErrorHandler(w, "No active session found")
-		return
-	}
-
-	resp, err := Logout(r.Context(), logoutCallRequest)
+	resp, err := h.service.Logout(r.Context())
 	if err != nil {
-		log.Warnf("error logging out: %v", err)
+		log.WithError(err).Error("Failed to logout")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -210,27 +193,21 @@ func logoutCall(w http.ResponseWriter, r *http.Request) {
 authenticateOAuthCall handles the request to authenticate an OAuth call.
 This is used in the OAuth login flow.
 */
-func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
-	var authenticateOAuthCallRequest = AuthenticateOAuthCallRequest{}
+func (h *Handler) authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
+	var authenticateOAuthCallRequest AuthenticateOAuthCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&authenticateOAuthCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	if authenticateOAuthCallRequest.Token == "" {
-		errors.ValidationErrorHandler(w, "OAuth token is required")
+	if !validation.ValidateRequest(w, authenticateOAuthCallRequest) {
 		return
 	}
 
-	if authenticateOAuthCallRequest.StytchTokenType != "oauth" {
-		errors.ValidationErrorHandler(w, "Invalid token type. Expected 'oauth'")
-		return
-	}
-
-	resp, err := AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
+	resp, err := h.service.AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
 	if err != nil {
-		log.Warnf("OAuth authentication failed: %v", err)
+		log.WithError(err).Error("Failed to authenticate OAuth")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "OAuth authentication failed", errors.ErrCodeAuthentication))
 		return
 	}
@@ -246,29 +223,21 @@ func authenticateOAuthCall(w http.ResponseWriter, r *http.Request) {
 attachOAuthCall handles the request to attach an OAuth call.
 This is used in the OAuth attach flow.
 */
-func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
-	var attachOAuthCallRequest = AttachOAuthCallRequest{}
+func (h *Handler) attachOAuthCall(w http.ResponseWriter, r *http.Request) {
+	var attachOAuthCallRequest AttachOAuthCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&attachOAuthCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	attachOAuthCallRequest.SessionToken = common.GetSessionToken(r.Context())
-
-	if attachOAuthCallRequest.Provider == "" || attachOAuthCallRequest.UserId == "" {
-		errors.ValidationErrorHandler(w, "Provider and user ID are required")
+	if !validation.ValidateRequest(w, attachOAuthCallRequest) {
 		return
 	}
 
-	if attachOAuthCallRequest.SessionToken == "" {
-		errors.UnauthorizedErrorHandler(w, "No active session found")
-		return
-	}
-
-	resp, err := AttachOAuth(r.Context(), attachOAuthCallRequest)
+	resp, err := h.service.AttachOAuth(r.Context(), attachOAuthCallRequest)
 	if err != nil {
-		log.Warnf("error attaching OAuth: %v", err)
+		log.WithError(err).Error("Failed to attach OAuth")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -284,29 +253,21 @@ func attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 extendSessionCall handles the request to extend a session.
 This is used to extend the session duration.
 */
-func extendSessionCall(w http.ResponseWriter, r *http.Request) {
-	var extendSessionCallRequest = ExtendSessionCallRequest{}
+func (h *Handler) extendSessionCall(w http.ResponseWriter, r *http.Request) {
+	var extendSessionCallRequest ExtendSessionCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&extendSessionCallRequest); err != nil {
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	extendSessionCallRequest.SessionToken = common.GetSessionToken(r.Context())
-
-	if extendSessionCallRequest.SessionToken == "" || extendSessionCallRequest.SessionDurationMinutes == 0 {
-		errors.UnauthorizedErrorHandler(w, "No active session found")
+	if !validation.ValidateRequest(w, extendSessionCallRequest) {
 		return
 	}
 
-	if extendSessionCallRequest.SessionDurationMinutes < 5 || extendSessionCallRequest.SessionDurationMinutes > 525600 {
-		errors.ValidationErrorHandler(w, "Session duration has an invalid value")
-		return
-	}
-
-	resp, err := ExtendSession(r.Context(), extendSessionCallRequest)
+	resp, err := h.service.ExtendSession(r.Context(), extendSessionCallRequest)
 	if err != nil {
-		log.Warnf("error extending session: %v", err)
+		log.WithError(err).Error("Failed to extend session")
 		errors.InternalErrorHandler(w)
 		return
 	}

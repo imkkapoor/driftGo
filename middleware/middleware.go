@@ -1,20 +1,27 @@
 package middleware
 
 import (
-	"context"
 	"driftGo/api/auth"
-	"driftGo/api/common"
-	"driftGo/api/errors"
+	"driftGo/api/common/errors"
+	"driftGo/api/common/utils"
 	"net/http"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
 
-var publicPrefixes = []string{
-	"/auth/login",
-	"/auth/create",
-	"/auth/authenticate/",
+var (
+	publicPrefixes = []string{
+		"/auth/login",
+		"/auth/create",
+		"/auth/authenticate/",
+	}
+	authService *auth.Service
+)
+
+// SetAuthService sets the auth service instance for the middleware
+func SetAuthService(service *auth.Service) {
+	authService = service
 }
 
 func isPublicRoute(path string) bool {
@@ -34,7 +41,6 @@ This middleware is used to protect routes that require authentication.
 */
 func AuthenticateSession(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		if isPublicRoute(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
@@ -43,22 +49,25 @@ func AuthenticateSession(next http.Handler) http.Handler {
 		authHeader := r.Header.Get("Authorization")
 
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			log.Warn("missing or malformed Authorization header")
+			log.Error("Missing or malformed Authorization header")
 			errors.UnauthorizedErrorHandler(w, "Missing or malformed Authorization header")
 			return
 		}
 
 		sessionToken := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer"))
 
-		var err error
-		_, err = auth.AuthenticateSession(r.Context(), sessionToken)
+		response, err := authService.AuthenticateSession(r.Context(), sessionToken)
 		if err != nil {
-			log.Warnf("invalid session: %v", err)
+			log.WithError(err).Error("Invalid session")
 			errors.UnauthorizedErrorHandler(w, "Invalid session")
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), common.SessionTokenKey, sessionToken)
+		authContext := utils.AuthContext{
+			UserID:       response.User.UserID,
+			SessionToken: sessionToken,
+		}
+		ctx := utils.WithAuthContext(r.Context(), authContext)
 
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)
