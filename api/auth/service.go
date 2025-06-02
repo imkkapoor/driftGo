@@ -114,7 +114,7 @@ func (s *Service) ExtendSession(ctx context.Context, extendSessionCallRequest Ex
 	return s.client.Sessions.Authenticate(ctx, params)
 }
 
-func (s *Service) GetUser(ctx context.Context, userID string) (*users.GetResponse, error) {
+func (s *Service) GetUser(ctx context.Context) (*users.GetResponse, error) {
 	params := &users.GetParams{
 		UserID: utils.GetUserID(ctx),
 	}
