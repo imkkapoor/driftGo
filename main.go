@@ -2,39 +2,26 @@ package main
 
 import (
 	"driftGo/api"
+	"driftGo/config"
+	"driftGo/pkg/logger"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
 	log "github.com/sirupsen/logrus"
 )
 
-type JustProjectNameFormatter struct {
-	log.TextFormatter
-}
-
-func (f *JustProjectNameFormatter) Format(entry *log.Entry) ([]byte, error) {
-	if entry.HasCaller() {
-		entry.Caller.File = "    driftGo"
-	}
-	return f.TextFormatter.Format(entry)
-}
-
 func main() {
-
-	log.SetReportCaller(true)
+	logger.Init(config.Env)
 	var r *chi.Mux = chi.NewRouter()
 
-	log.SetFormatter(&JustProjectNameFormatter{
-		TextFormatter: log.TextFormatter{
-			FullTimestamp:   true,
-			TimestampFormat: "01/02 15:04:05",
-		},
-	})
+	services, err := api.InitializeServices()
+	if err != nil {
+		log.Fatal("Failed to initialize services:", err)
+	}
 
-	api.SetupRoutes(r)
+	api.SetupRoutes(r, services)
 
-	port := os.Getenv("PORT")
+	port := config.Port
 	if port == "" {
 		port = "8080"
 	}
