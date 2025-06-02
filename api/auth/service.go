@@ -2,9 +2,8 @@ package auth
 
 import (
 	"context"
-	"log"
-	"os"
 
+	"driftGo/api/common/utils"
 	"driftGo/config"
 
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks"
@@ -14,110 +13,111 @@ import (
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/passwords/session"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/sessions"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/stytchapi"
+	"github.com/stytchauth/stytch-go/v16/stytch/consumer/users"
 )
 
-/*
-Logic for setting up the Stytch client and sending requests to the Stytch API.
-*/
-var serviceClient *stytchapi.API
-
-func init() {
-	var err error
-	serviceClient, err = stytchapi.NewClient(config.ProjectID, config.Secret)
-	if err != nil {
-		log.Fatalf("failed to initialize Stytch client in service: %v", err)
-	}
+// Service handles all auth-related operations
+type Service struct {
+	client *stytchapi.API
 }
 
-func SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkCallRequest SendCreateAccountMagicLinkCallRequest) (*email.LoginOrCreateResponse, error) {
+// NewService creates a new auth service
+func NewService(projectID, secret string) (*Service, error) {
+	client, err := stytchapi.NewClient(projectID, secret)
+	if err != nil {
+		return nil, err
+	}
+	return &Service{client: client}, nil
+}
 
+func (s *Service) SendCreateAccountMagicLink(ctx context.Context, sendCreateAccountMagicLinkCallRequest SendCreateAccountMagicLinkCallRequest) (*email.LoginOrCreateResponse, error) {
 	params := &email.LoginOrCreateParams{
 		Email:                   sendCreateAccountMagicLinkCallRequest.Email,
 		CodeChallenge:           sendCreateAccountMagicLinkCallRequest.CodeChallenge,
 		CreateUserAsPending:     true,
-		SignupMagicLinkURL:      os.Getenv("STYTCH_SIGNUP_REDIRECT_URL"),
+		SignupMagicLinkURL:      config.SignupMagicLinkURL,
 		SignupExpirationMinutes: 10,
 	}
 
-	return serviceClient.MagicLinks.Email.LoginOrCreate(ctx, params)
+	return s.client.MagicLinks.Email.LoginOrCreate(ctx, params)
 }
 
-func SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest SetPasswordBySessionCallRequest) (*session.ResetResponse, error) {
-
+func (s *Service) SetPasswordBySession(ctx context.Context, setPasswordBySessionCallRequest SetPasswordBySessionCallRequest) (*session.ResetResponse, error) {
 	params := &session.ResetParams{
 		Password:               setPasswordBySessionCallRequest.Password,
-		SessionToken:           setPasswordBySessionCallRequest.SessionToken,
+		SessionToken:           utils.GetSessionToken(ctx),
 		SessionDurationMinutes: setPasswordBySessionCallRequest.SessionDurationMinutes,
 	}
 
-	return serviceClient.Passwords.Sessions.Reset(ctx, params)
+	return s.client.Passwords.Sessions.Reset(ctx, params)
 }
 
-func AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest AuthenticateMagicLinkCallRequest) (*magiclinks.AuthenticateResponse, error) {
-
+func (s *Service) AuthenticateMagicLink(ctx context.Context, authenticateMagicLinkCallRequest AuthenticateMagicLinkCallRequest) (*magiclinks.AuthenticateResponse, error) {
 	params := &magiclinks.AuthenticateParams{
 		Token:                  authenticateMagicLinkCallRequest.Token,
 		CodeVerifier:           authenticateMagicLinkCallRequest.CodeVerifier,
 		SessionDurationMinutes: 60,
 	}
 
-	return serviceClient.MagicLinks.Authenticate(ctx, params)
+	return s.client.MagicLinks.Authenticate(ctx, params)
 }
 
-func Login(ctx context.Context, loginCallRequest LoginCallRequest) (*passwords.AuthenticateResponse, error) {
-
+func (s *Service) Login(ctx context.Context, loginCallRequest LoginCallRequest) (*passwords.AuthenticateResponse, error) {
 	params := &passwords.AuthenticateParams{
 		Email:                  loginCallRequest.Email,
 		Password:               loginCallRequest.Password,
 		SessionDurationMinutes: 60,
 	}
 
-	return serviceClient.Passwords.Authenticate(ctx, params)
+	return s.client.Passwords.Authenticate(ctx, params)
 }
 
-func Logout(ctx context.Context, logoutCallRequest LogoutCallRequest) (*sessions.RevokeResponse, error) {
-
+func (s *Service) Logout(ctx context.Context) (*sessions.RevokeResponse, error) {
 	params := &sessions.RevokeParams{
-		SessionToken: logoutCallRequest.SessionToken,
+		SessionToken: utils.GetSessionToken(ctx),
 	}
 
-	return serviceClient.Sessions.Revoke(ctx, params)
+	return s.client.Sessions.Revoke(ctx, params)
 }
 
-func AttachOAuth(ctx context.Context, attachOAuthCallRequest AttachOAuthCallRequest) (*oauth.AttachResponse, error) {
-
+func (s *Service) AttachOAuth(ctx context.Context, attachOAuthCallRequest AttachOAuthCallRequest) (*oauth.AttachResponse, error) {
 	params := &oauth.AttachParams{
 		UserID:   attachOAuthCallRequest.UserId,
 		Provider: attachOAuthCallRequest.Provider,
 	}
 
-	return serviceClient.OAuth.Attach(ctx, params)
+	return s.client.OAuth.Attach(ctx, params)
 }
 
-func AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest AuthenticateOAuthCallRequest) (*oauth.AuthenticateResponse, error) {
-
+func (s *Service) AuthenticateOAuth(ctx context.Context, authenticateOAuthCallRequest AuthenticateOAuthCallRequest) (*oauth.AuthenticateResponse, error) {
 	params := &oauth.AuthenticateParams{
 		Token: authenticateOAuthCallRequest.Token,
 	}
 
-	return serviceClient.OAuth.Authenticate(ctx, params)
+	return s.client.OAuth.Authenticate(ctx, params)
 }
 
-func AuthenticateSession(ctx context.Context, sessionToken string) (*sessions.AuthenticateResponse, error) {
-
+func (s *Service) AuthenticateSession(ctx context.Context, sessionToken string) (*sessions.AuthenticateResponse, error) {
 	params := &sessions.AuthenticateParams{
 		SessionToken: sessionToken,
 	}
 
-	return serviceClient.Sessions.Authenticate(ctx, params)
+	return s.client.Sessions.Authenticate(ctx, params)
 }
 
-func ExtendSession(ctx context.Context, extendSessionCallRequest ExtendSessionCallRequest) (*sessions.AuthenticateResponse, error) {
-
+func (s *Service) ExtendSession(ctx context.Context, extendSessionCallRequest ExtendSessionCallRequest) (*sessions.AuthenticateResponse, error) {
 	params := &sessions.AuthenticateParams{
-		SessionToken:           extendSessionCallRequest.SessionToken,
+		SessionToken:           utils.GetSessionToken(ctx),
 		SessionDurationMinutes: extendSessionCallRequest.SessionDurationMinutes,
 	}
 
-	return serviceClient.Sessions.Authenticate(ctx, params)
+	return s.client.Sessions.Authenticate(ctx, params)
+}
+
+func (s *Service) GetUser(ctx context.Context, userID string) (*users.GetResponse, error) {
+	params := &users.GetParams{
+		UserID: utils.GetUserID(ctx),
+	}
+
+	return s.client.Users.Get(ctx, params)
 }
