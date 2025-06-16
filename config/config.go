@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	// Stytch configuration
 	ProjectID          string
 	Secret             string
 	SignupMagicLinkURL string
@@ -16,6 +17,8 @@ var (
 	PlaidSecret        string
 	PlaidEnv           string
 	Env                string
+	DatabaseURL        string
+	WebhookSecret      string
 )
 
 func init() {
@@ -32,6 +35,8 @@ func init() {
 	PlaidSecret = os.Getenv("PLAID_SECRET")
 	PlaidEnv = os.Getenv("PLAID_ENV")
 	Env = os.Getenv("ENV")
+	DatabaseURL = os.Getenv("DATABASE_URL")
+	WebhookSecret = os.Getenv("STYTCH_WEBHOOK_SECRET")
 
 	if ProjectID == "" || Secret == "" {
 		log.Fatal("Missing required environment variables: STYTCH_PROJECT_ID and/or STYTCH_SECRET")
@@ -43,5 +48,9 @@ func init() {
 
 	if PlaidEnv == "" {
 		PlaidEnv = "sandbox" // Default to sandbox environment
+	}
+
+	if WebhookSecret == "" {
+		log.Fatal("Missing required environment variable: STYTCH_WEBHOOK_SECRET")
 	}
 }

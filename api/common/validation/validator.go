@@ -13,7 +13,9 @@ func init() {
 	validate = validator.New()
 }
 
-// ValidateRequest validates a request struct and returns validation errors if any
+/*
+ValidateRequest validates a request struct and returns validation errors if any
+*/
 func ValidateRequest(w http.ResponseWriter, request interface{}) bool {
 	if err := validate.Struct(request); err != nil {
 		if validationErrors, ok := err.(validator.ValidationErrors); ok {
@@ -35,6 +37,7 @@ func ValidateRequest(w http.ResponseWriter, request interface{}) bool {
 				return false
 			}
 		}
+
 		errors.ValidationErrorHandler(w, "Invalid request format")
 		return false
 	}
