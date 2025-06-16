@@ -1,9 +1,9 @@
 package middleware
 
 import (
-	"driftGo/api/auth"
 	"driftGo/api/common/errors"
 	"driftGo/api/common/utils"
+	domauth "driftGo/domain/auth"
 	"net/http"
 	"strings"
 
@@ -16,11 +16,13 @@ var (
 		"/auth/create",
 		"/auth/authenticate/",
 	}
-	authService *auth.Service
+	authService *domauth.Service
 )
 
-// SetAuthService sets the auth service instance for the middleware
-func SetAuthService(service *auth.Service) {
+/*
+SetAuthService sets the auth service instance for the middleware
+*/
+func SetAuthService(service *domauth.Service) {
 	authService = service
 }
 

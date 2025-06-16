@@ -94,3 +94,47 @@ var (
 		return NewErrorWithCode(http.StatusBadRequest, MsgInvalidFormat, ErrCodeInvalidFormat)
 	}
 )
+
+type ErrorResponse struct {
+	Error   string `json:"error"`
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+func NewErrorResponse(err error, message string, code int) *ErrorResponse {
+	return &ErrorResponse{
+		Error:   err.Error(),
+		Message: message,
+		Code:    code,
+	}
+}
+
+func WriteError(w http.ResponseWriter, err error, message string, code int) {
+	response := NewErrorResponse(err, message, code)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(response)
+}
+
+/*
+Common error responses
+*/
+func BadRequest(w http.ResponseWriter, err error, message string) {
+	WriteError(w, err, message, http.StatusBadRequest)
+}
+
+func Unauthorized(w http.ResponseWriter, err error, message string) {
+	WriteError(w, err, message, http.StatusUnauthorized)
+}
+
+func Forbidden(w http.ResponseWriter, err error, message string) {
+	WriteError(w, err, message, http.StatusForbidden)
+}
+
+func NotFound(w http.ResponseWriter, err error, message string) {
+	WriteError(w, err, message, http.StatusNotFound)
+}
+
+func InternalServerError(w http.ResponseWriter, err error, message string) {
+	WriteError(w, err, message, http.StatusInternalServerError)
+}

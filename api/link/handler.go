@@ -3,6 +3,7 @@ package link
 import (
 	"driftGo/api/common/errors"
 	"driftGo/api/common/validation"
+	"driftGo/domain/link"
 	"encoding/json"
 	"net/http"
 
@@ -14,14 +15,14 @@ import (
 Handler holds the service instance for handling Plaid link-related operations
 */
 type Handler struct {
-	service *Service
+	service *link.Service
 }
 
 /*
 SetupRoutes sets up the routes for the link package.
 It registers the handlers for the various Plaid link-related endpoints.
 */
-func SetupRoutes(r chi.Router, service *Service) {
+func SetupRoutes(r chi.Router, service *link.Service) {
 	handler := &Handler{service: service}
 	r.Post("/create", handler.createLinkToken)
 	r.Post("/exchange", handler.exchangePublicToken)
@@ -66,7 +67,7 @@ func (h *Handler) exchangePublicToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.service.ExchangePublicToken(r.Context(), exchangePublicTokenCallRequest)
+	response, err := h.service.ExchangePublicToken(r.Context(), exchangePublicTokenCallRequest.PublicToken)
 	if err != nil {
 		log.WithError(err).Error("Failed to exchange public token")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusInternalServerError, "Failed to exchange public token", errors.ErrCodeInternalError))
