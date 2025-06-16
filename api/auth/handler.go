@@ -3,6 +3,7 @@ package auth
 import (
 	"driftGo/api/common/errors"
 	"driftGo/api/common/validation"
+	"driftGo/domain/auth"
 	"encoding/json"
 	"net/http"
 
@@ -22,7 +23,7 @@ func init() {
 SetupRoutes sets up the routes for the auth package.
 It registers the handlers for the various auth-related endpoints.
 */
-func SetupRoutes(r chi.Router, service *Service) {
+func SetupRoutes(r chi.Router, service *auth.Service) {
 	handler := &Handler{service: service}
 	r.Post("/create", handler.sendCreateAccountMagicLinkCall)
 	r.Route("/authenticate", func(r chi.Router) {
@@ -40,7 +41,7 @@ func SetupRoutes(r chi.Router, service *Service) {
 Handler holds the service instance
 */
 type Handler struct {
-	service *Service
+	service *auth.Service
 }
 
 /*
@@ -61,7 +62,7 @@ func (h *Handler) sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.
 		return
 	}
 
-	resp, err := h.service.SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest)
+	resp, err := h.service.SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest.Email, sendCreateAccountMagicLinkCallRequest.CodeChallenge)
 	if err != nil {
 		log.WithError(err).Error("Failed to send create account magic link")
 		errors.InternalErrorHandler(w)
@@ -92,7 +93,7 @@ func (h *Handler) setPasswordCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest)
+	resp, err := h.service.SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest.Password, setPasswordBySessionCallRequest.SessionDurationMinutes)
 	if err != nil {
 		log.WithError(err).Error("Failed to set password")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Failed to set password. Please try again.", errors.ErrCodeAuthentication))
@@ -123,7 +124,7 @@ func (h *Handler) authenticateMagicLinkCall(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	resp, err := h.service.AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest)
+	resp, err := h.service.AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest.Token, authenticateMagicLinkCallRequest.CodeVerifier)
 	if err != nil {
 		log.WithError(err).Error("Failed to authenticate magic link")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Magic link authentication failed", errors.ErrCodeAuthentication))
@@ -154,7 +155,7 @@ func (h *Handler) loginCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.Login(r.Context(), loginCallRequest)
+	resp, err := h.service.Login(r.Context(), loginCallRequest.Email, loginCallRequest.Password)
 	if err != nil {
 		log.WithError(err).Error("Failed to login")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid email or password", errors.ErrCodeAuthentication))
@@ -174,7 +175,6 @@ This is used in the logout flow.
 The request body should contain the session token.
 */
 func (h *Handler) logoutCall(w http.ResponseWriter, r *http.Request) {
-
 	resp, err := h.service.Logout(r.Context())
 	if err != nil {
 		log.WithError(err).Error("Failed to logout")
@@ -205,7 +205,7 @@ func (h *Handler) authenticateOAuthCall(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	resp, err := h.service.AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest)
+	resp, err := h.service.AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest.Token)
 	if err != nil {
 		log.WithError(err).Error("Failed to authenticate OAuth")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "OAuth authentication failed", errors.ErrCodeAuthentication))
@@ -235,7 +235,7 @@ func (h *Handler) attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.AttachOAuth(r.Context(), attachOAuthCallRequest)
+	resp, err := h.service.AttachOAuth(r.Context(), attachOAuthCallRequest.UserId, attachOAuthCallRequest.Provider)
 	if err != nil {
 		log.WithError(err).Error("Failed to attach OAuth")
 		errors.InternalErrorHandler(w)
@@ -251,7 +251,7 @@ func (h *Handler) attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 
 /*
 extendSessionCall handles the request to extend a session.
-This is used to extend the session duration.
+This is used in the session extension flow.
 */
 func (h *Handler) extendSessionCall(w http.ResponseWriter, r *http.Request) {
 	var extendSessionCallRequest ExtendSessionCallRequest
@@ -265,7 +265,7 @@ func (h *Handler) extendSessionCall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.service.ExtendSession(r.Context(), extendSessionCallRequest)
+	resp, err := h.service.ExtendSession(r.Context(), extendSessionCallRequest.SessionDurationMinutes)
 	if err != nil {
 		log.WithError(err).Error("Failed to extend session")
 		errors.InternalErrorHandler(w)
