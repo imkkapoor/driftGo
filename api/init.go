@@ -1,63 +1,56 @@
 package api
 
 import (
-	"context"
-
 	"driftGo/api/webhook"
 	"driftGo/config"
 	"driftGo/db"
-	domauth "driftGo/domain/auth"
-	domlink "driftGo/domain/link"
-	"driftGo/domain/user"
-
-	"github.com/jackc/pgx/v5/pgxpool"
+	authDomain "driftGo/domain/auth"
+	linkDomain "driftGo/domain/link"
+	userDomain "driftGo/domain/user"
 )
 
 /*
 Services holds all the service instances
 */
 type Services struct {
-	Auth    *domauth.Service
-	Link    *domlink.Service
+	Auth    *authDomain.Service
+	Link    *linkDomain.Service
 	Webhook *webhook.WebhookHandler
-	DB      *pgxpool.Pool
 }
 
 /*
 InitializeServices creates and initializes all services
 */
 func InitializeServices() (*Services, error) {
-	pool, err := db.InitPostgres(context.Background(), config.DatabaseURL)
-	if err != nil {
-		return nil, err
-	}
+	// Initialize database
+	pool := db.InitDB()
 
-	// Initialize User Repository
-	userRepo := user.NewRepository(pool)
+	// Initialize User Service (now uses sqlc directly)
+	userService := userDomain.NewService(pool)
 
 	// Initialize Auth Service
-	authService, err := domauth.NewService(config.ProjectID, config.Secret, userRepo)
+	authService, err := authDomain.NewService(config.ProjectID, config.Secret)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize Link Service
-	linkService, err := domlink.NewService(
+	linkService, err := linkDomain.NewService(
 		config.PlaidClientID,
 		config.PlaidSecret,
 		config.PlaidEnv,
+		userService,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize Webhook Handler
-	webhookHandler := webhook.NewWebhookHandler(userRepo, config.WebhookSecret)
+	webhookHandler := webhook.NewWebhookHandler(userService, config.WebhookSecret)
 
 	return &Services{
 		Auth:    authService,
 		Link:    linkService,
 		Webhook: webhookHandler,
-		DB:      pool,
 	}, nil
 }
