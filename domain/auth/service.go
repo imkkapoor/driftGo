@@ -5,7 +5,6 @@ import (
 
 	"driftGo/api/common/utils"
 	"driftGo/config"
-	"driftGo/domain/user"
 
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks"
 	"github.com/stytchauth/stytch-go/v16/stytch/consumer/magiclinks/email"
@@ -21,19 +20,18 @@ import (
 Service handles all auth-related operations
 */
 type Service struct {
-	client   *stytchapi.API
-	userRepo *user.Repository
+	client *stytchapi.API
 }
 
 /*
 NewService creates a new auth service
 */
-func NewService(projectID, secret string, userRepo *user.Repository) (*Service, error) {
+func NewService(projectID, secret string) (*Service, error) {
 	client, err := stytchapi.NewClient(projectID, secret)
 	if err != nil {
 		return nil, err
 	}
-	return &Service{client: client, userRepo: userRepo}, nil
+	return &Service{client: client}, nil
 }
 
 func (s *Service) SendCreateAccountMagicLink(ctx context.Context, userEmail, codeChallenge string) (*email.LoginOrCreateResponse, error) {

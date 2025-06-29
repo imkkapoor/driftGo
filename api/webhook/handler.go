@@ -17,9 +17,9 @@ type WebhookHandler struct {
 /*
 NewWebhookHandler creates a new webhook handler.
 */
-func NewWebhookHandler(userRepo *user.Repository, secret string) *WebhookHandler {
+func NewWebhookHandler(userService *user.Service, secret string) *WebhookHandler {
 	return &WebhookHandler{
-		stytchHandler: stytch.NewHandler(userRepo, secret),
+		stytchHandler: stytch.NewHandler(userService, secret),
 	}
 }
 

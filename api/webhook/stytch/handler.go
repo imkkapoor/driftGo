@@ -14,17 +14,17 @@ import (
 Handler handles Stytch webhook events
 */
 type Handler struct {
-	userRepo *user.Repository
-	secret   string
+	userService *user.Service
+	secret      string
 }
 
 /*
 NewHandler creates a new Stytch webhook handler
 */
-func NewHandler(userRepo *user.Repository, secret string) *Handler {
+func NewHandler(userService *user.Service, secret string) *Handler {
 	return &Handler{
-		userRepo: userRepo,
-		secret:   secret,
+		userService: userService,
+		secret:      secret,
 	}
 }
 
@@ -68,17 +68,30 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		existingUser, err := h.userService.GetUserByStytchID(r.Context(), event.StytchUserID)
+		if err != nil && err != user.ErrUserNotFound {
+			log.WithError(err).Error("Failed to check if user exists")
+			errors.InternalErrorHandler(w)
+			return
+		}
+		if existingUser != nil {
+			log.WithField("stytch_user_id", event.StytchUserID).Info("User already exists, skipping CREATE event")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
 		var email string
 		if len(event.User.Emails) > 0 {
 			email = event.User.Emails[0].Email
 		}
 
-		_, err := h.userRepo.CreateUser(
+		_, err = h.userService.CreateUser(
 			r.Context(),
 			event.StytchUserID,
 			event.User.Name.FirstName,
 			event.User.Name.LastName,
 			email,
+			event.User.Status,
 		)
 		if err != nil {
 			log.WithError(err).Error("Failed to create user")
@@ -98,24 +111,13 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			email = event.User.Emails[0].Email
 		}
 
-		_, err := h.userRepo.GetUserByStytchID(r.Context(), event.StytchUserID)
-		if err != nil {
-			if err == user.ErrUserNotFound {
-				log.Error("User not found for UPDATE event")
-				errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusNotFound, "User not found", errors.ErrCodeNotFound))
-				return
-			}
-			log.WithError(err).Error("Failed to get user for update")
-			errors.InternalErrorHandler(w)
-			return
-		}
-
-		_, err = h.userRepo.UpdateUser(
+		_, err := h.userService.UpdateUser(
 			r.Context(),
 			event.StytchUserID,
 			event.User.Name.FirstName,
 			event.User.Name.LastName,
 			email,
+			event.User.Status,
 		)
 		if err != nil {
 			log.WithError(err).Error("Failed to update user")
@@ -124,7 +126,7 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case "DELETE":
-		if err := h.userRepo.DeleteUser(r.Context(), event.StytchUserID); err != nil {
+		if err := h.userService.DeleteUser(r.Context(), event.StytchUserID); err != nil {
 			log.WithError(err).Error("Failed to process user deletion")
 			errors.InternalErrorHandler(w)
 			return

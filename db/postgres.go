@@ -2,47 +2,56 @@ package db
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
 	"log"
+	"time"
 
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"driftGo/config"
+
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
 
-func runMigrations(connString string) error {
-	m, err := migrate.New("file://db/migrations", connString)
+func runMigrations() error {
+	db, err := sql.Open("postgres", config.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to create migrate instance: %v", err)
+		return err
 	}
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to run migrations: %v", err)
+	defer db.Close()
+
+	if err := goose.Up(db, "db/goose_migrations"); err != nil {
+		return err
 	}
-	log.Println("Migrations completed successfully")
+	log.Println("goose: Migrations completed successfully")
 	return nil
 }
 
-func InitPostgres(ctx context.Context, connString string) (*pgxpool.Pool, error) {
-	config, err := pgxpool.ParseConfig(connString)
+// InitDB initializes and returns a database connection pool
+func InitDB() *pgxpool.Pool {
+	dbURL := config.DatabaseURL
+	if dbURL == "" {
+		log.Fatal("postgres: DATABASE_URL is not set in config")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse connection string: %v", err)
+		log.Fatalf("postgres: Unable to connect to database: %v", err)
 	}
 
-	pool, err := pgxpool.NewWithConfig(ctx, config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create connection pool: %v", err)
+	if err = pool.Ping(ctx); err != nil {
+		log.Fatalf("postgres: Database ping failed: %v", err)
 	}
 
-	if err := pool.Ping(ctx); err != nil {
-		return nil, fmt.Errorf("unable to ping database: %v", err)
+	log.Println("postgres: Successfully connected to PostgreSQL")
+
+	// Run migrations after successful connection
+	if err := runMigrations(); err != nil {
+		log.Fatalf("goose: Failed to run migrations: %v", err)
 	}
 
-	log.Println("Successfully connected to PostgreSQL")
-
-	if err := runMigrations(connString); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %v", err)
-	}
-
-	return pool, nil
+	return pool
 }
