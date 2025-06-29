@@ -43,3 +43,6 @@ Thumbs.db
 
 # Generated sqlc files
 *.gen.go
+
+# Binaries
+server

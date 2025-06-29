@@ -32,7 +32,7 @@ func (s *Service) CreateUser(ctx context.Context, stytchUserID, firstName, lastN
 	userUUID := uuid.New()
 
 	arg := CreateUserParams{
-		Uuid:         pgtype.UUID{Bytes: userUUID, Valid: true},
+		Uuid:         userUUID,
 		StytchUserID: stytchUserID,
 		FirstName:    pgtype.Text{String: firstName, Valid: firstName != ""},
 		LastName:     pgtype.Text{String: lastName, Valid: lastName != ""},
@@ -97,8 +97,7 @@ func (s *Service) GetUserByID(ctx context.Context, userID int64) (*User, error) 
 
 // GetUserByUUID retrieves a user by their UUID
 func (s *Service) GetUserByUUID(ctx context.Context, userUUID uuid.UUID) (*User, error) {
-	pgUUID := pgtype.UUID{Bytes: userUUID, Valid: true}
-	dbUser, err := s.querier.GetUserByUUID(ctx, pgUUID)
+	dbUser, err := s.querier.GetUserByUUID(ctx, userUUID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
