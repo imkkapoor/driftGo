@@ -8,7 +8,6 @@ import (
 )
 
 var (
-	// Stytch configuration
 	ProjectID          string
 	Secret             string
 	SignupMagicLinkURL string
