@@ -28,7 +28,7 @@ func NewService(clientID, secret, env string, userService user.UserInterface) (*
 	case "production":
 		plaidEnv = plaid.Production
 	default:
-		return nil, errors.New(" Invalid Plaid environment: " + env)
+		return nil, errors.New("Invalid Plaid environment: " + env)
 	}
 
 	configuration := plaid.NewConfiguration()
