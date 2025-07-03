@@ -15,19 +15,25 @@ var (
 	ErrUserAlreadyExists = errors.New("user already exists")
 )
 
-// Service handles user-related business logic using sqlc
+/*
+Service handles user-related business logic using sqlc
+*/
 type Service struct {
-	querier Querier
+	database Querier
 }
 
-// NewService creates a new user service
+/*
+NewService creates a new user service
+*/
 func NewService(db *pgxpool.Pool) *Service {
 	return &Service{
-		querier: New(db),
+		database: New(db),
 	}
 }
 
-// CreateUser creates a new user
+/*
+exec
+*/
 func (s *Service) CreateUser(ctx context.Context, stytchUserID, firstName, lastName, email, status string) (*User, error) {
 	userUUID := uuid.New()
 
@@ -40,7 +46,7 @@ func (s *Service) CreateUser(ctx context.Context, stytchUserID, firstName, lastN
 		Status:       UserStatus(status),
 	}
 
-	dbUser, err := s.querier.CreateUser(ctx, arg)
+	dbUser, err := s.database.CreateUser(ctx, arg)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +54,9 @@ func (s *Service) CreateUser(ctx context.Context, stytchUserID, firstName, lastN
 	return &dbUser, nil
 }
 
-// UpdateUser updates an existing user
+/*
+exec
+*/
 func (s *Service) UpdateUser(ctx context.Context, stytchUserID, firstName, lastName, email, status string) (*User, error) {
 	arg := UpdateUserParams{
 		StytchUserID: stytchUserID,
@@ -58,7 +66,7 @@ func (s *Service) UpdateUser(ctx context.Context, stytchUserID, firstName, lastN
 		Status:       UserStatus(status),
 	}
 
-	dbUser, err := s.querier.UpdateUser(ctx, arg)
+	dbUser, err := s.database.UpdateUser(ctx, arg)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -69,9 +77,11 @@ func (s *Service) UpdateUser(ctx context.Context, stytchUserID, firstName, lastN
 	return &dbUser, nil
 }
 
-// GetUserByStytchID retrieves a user by their Stytch user ID
+/*
+returns one
+*/
 func (s *Service) GetUserByStytchID(ctx context.Context, stytchUserID string) (*User, error) {
-	dbUser, err := s.querier.GetUserByStytchID(ctx, stytchUserID)
+	dbUser, err := s.database.GetUserByStytchID(ctx, stytchUserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -82,9 +92,11 @@ func (s *Service) GetUserByStytchID(ctx context.Context, stytchUserID string) (*
 	return &dbUser, nil
 }
 
-// GetUserByID retrieves a user by their internal ID
+/*
+returns one
+*/
 func (s *Service) GetUserByID(ctx context.Context, userID int64) (*User, error) {
-	dbUser, err := s.querier.GetUserByID(ctx, userID)
+	dbUser, err := s.database.GetUserByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -95,9 +107,11 @@ func (s *Service) GetUserByID(ctx context.Context, userID int64) (*User, error) 
 	return &dbUser, nil
 }
 
-// GetUserByUUID retrieves a user by their UUID
+/*
+returns one
+*/
 func (s *Service) GetUserByUUID(ctx context.Context, userUUID uuid.UUID) (*User, error) {
-	dbUser, err := s.querier.GetUserByUUID(ctx, userUUID)
+	dbUser, err := s.database.GetUserByUUID(ctx, userUUID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -108,9 +122,11 @@ func (s *Service) GetUserByUUID(ctx context.Context, userUUID uuid.UUID) (*User,
 	return &dbUser, nil
 }
 
-// GetUserByEmail retrieves a user by their email
+/*
+returns one
+*/
 func (s *Service) GetUserByEmail(ctx context.Context, email string) (*User, error) {
-	dbUser, err := s.querier.GetUserByEmail(ctx, email)
+	dbUser, err := s.database.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound
@@ -121,18 +137,22 @@ func (s *Service) GetUserByEmail(ctx context.Context, email string) (*User, erro
 	return &dbUser, nil
 }
 
-// DeleteUser deletes a user by their Stytch user ID
+/*
+exec
+*/
 func (s *Service) DeleteUser(ctx context.Context, stytchUserID string) error {
-	err := s.querier.DeleteUser(ctx, stytchUserID)
+	err := s.database.DeleteUser(ctx, stytchUserID)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// UserExists checks if a user exists by their Stytch user ID
+/*
+returns bool
+*/
 func (s *Service) UserExists(ctx context.Context, stytchUserID string) (bool, error) {
-	_, err := s.querier.GetUserByStytchID(ctx, stytchUserID)
+	_, err := s.database.GetUserByStytchID(ctx, stytchUserID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil
