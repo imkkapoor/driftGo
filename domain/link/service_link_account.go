@@ -47,8 +47,8 @@ func (s *Service) CreateLinkAccount(ctx context.Context, plaidAccountID string, 
 /*
 returns one
 */
-func (s *Service) GetLinkAccountByID(ctx context.Context, id int64) (*LinkAccount, error) {
-	linkAccount, err := s.database.GetLinkAccountByID(ctx, id)
+func (s *Service) GetLinkAccountByID(ctx context.Context, ID int64) (*LinkAccount, error) {
+	linkAccount, err := s.database.GetLinkAccountByID(ctx, ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrLinkNotFound

@@ -181,8 +181,8 @@ func (s *Service) exchangePublicToken(ctx context.Context, publicToken string) (
 	}, nil
 }
 
-func (s *Service) GetInstitutionMetadata(ctx context.Context, accessToken string) (institutionId string, institutionName string, err error) {
-	institutionId, err = s.getInstitutionId(ctx, accessToken)
+func (s *Service) GetInstitutionMetadata(ctx context.Context, accessToken string) (institutionID string, institutionName string, err error) {
+	institutionID, err = s.getInstitutionID(ctx, accessToken)
 	if err != nil {
 		return "", "", err
 	}
@@ -192,10 +192,10 @@ func (s *Service) GetInstitutionMetadata(ctx context.Context, accessToken string
 		return "", "", err
 	}
 
-	return institutionId, institutionName, nil
+	return institutionID, institutionName, nil
 }
 
-func (s *Service) getInstitutionId(ctx context.Context, accessToken string) (institutionId string, err error) {
+func (s *Service) getInstitutionID(ctx context.Context, accessToken string) (institutionId string, err error) {
 	request := plaid.NewItemGetRequest(accessToken)
 
 	response, _, err := s.client.PlaidApi.ItemGet(ctx).ItemGetRequest(*request).Execute()

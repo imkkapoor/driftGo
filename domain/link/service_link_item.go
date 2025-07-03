@@ -43,8 +43,8 @@ func (s *Service) CreateLinkItem(ctx context.Context, userID int64, accessToken,
 /*
 returns one
 */
-func (s *Service) GetLinkItemByID(ctx context.Context, id int64) (*LinkItem, error) {
-	linkItem, err := s.database.GetLinkItemByID(ctx, id)
+func (s *Service) GetLinkItemByID(ctx context.Context, ID int64) (*LinkItem, error) {
+	linkItem, err := s.database.GetLinkItemByID(ctx, ID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrLinkNotFound
@@ -103,8 +103,8 @@ func (s *Service) GetLinkItemsByUser(ctx context.Context) ([]LinkItem, error) {
 /*
 exec
 */
-func (s *Service) DeleteLinkItemByID(ctx context.Context, id int64) error {
-	return s.database.DeleteLinkItem(ctx, id)
+func (s *Service) DeleteLinkItemByID(ctx context.Context, ID int64) error {
+	return s.database.DeleteLinkItem(ctx, ID)
 }
 
 /*
