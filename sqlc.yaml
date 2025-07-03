@@ -23,4 +23,23 @@ sql:
           - db_type: 'uuid'
             go_type:
               import: 'github.com/google/uuid'
-              type: 'UUID' 
+              type: 'UUID'
+  - engine: "postgresql"
+    queries: ["domain/link/sqlc/query_link_item.sql", "domain/link/sqlc/query_link_account.sql"]
+    schema: ["domain/link/sqlc/schema_v1.sql"]
+    gen:
+      go:
+        package: "link"
+        out: "domain/link"
+        emit_json_tags: true
+        emit_prepared_queries: false
+        emit_interface: true
+        emit_exact_table_names: false
+        emit_empty_slices: true
+        sql_package: "pgx/v5"
+        output_db_file_name: "db.gen.go"
+        output_models_file_name: "models.gen.go"
+        output_querier_file_name: "querier.gen.go"
+        output_batch_file_name: "batch.gen.go"
+        output_copyfrom_file_name: "copyfrom.gen.go"
+        output_files_suffix: ".gen" 

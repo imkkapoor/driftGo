@@ -50,7 +50,7 @@ func (h *Handler) createLinkToken(w http.ResponseWriter, r *http.Request) {
 }
 
 /*
-exchangePublicToken handles the request to exchange a public token for an access token.
+exchangePublicToken handles the request to exchange a public token for an access token and save it to the database.
 This is used after a user successfully links their bank account through Plaid Link.
 The public token is exchanged for an access token that can be used to access the user's bank account data.
 */
@@ -67,17 +67,12 @@ func (h *Handler) exchangePublicToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.service.ExchangePublicToken(r.Context(), exchangePublicTokenCallRequest.PublicToken)
+	err := h.service.ExchangePublicTokenAndSave(r.Context(), exchangePublicTokenCallRequest.PublicToken)
 	if err != nil {
-		log.WithError(err).Error("Failed to exchange public token")
-		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusInternalServerError, "Failed to exchange public token", errors.ErrCodeInternalError))
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.WithError(err).Error("Failed to encode exchange token response")
+		log.WithError(err).Error("Failed to exchange public token and save")
 		errors.InternalErrorHandler(w)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }

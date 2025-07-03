@@ -25,7 +25,7 @@ func InitializeServices() (*Services, error) {
 	// Initialize database
 	pool := db.InitDB()
 
-	// Initialize User Service (now uses sqlc directly)
+	// Initialize User Service
 	userService := userDomain.NewService(pool)
 
 	// Initialize Auth Service
@@ -40,6 +40,8 @@ func InitializeServices() (*Services, error) {
 		config.PlaidSecret,
 		config.PlaidEnv,
 		userService,
+		pool,
+		config.EncryptionKey,
 	)
 	if err != nil {
 		return nil, err

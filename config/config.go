@@ -18,6 +18,7 @@ var (
 	Env                string
 	DatabaseURL        string
 	WebhookSecret      string
+	EncryptionKey      string
 )
 
 func init() {
@@ -36,6 +37,7 @@ func init() {
 	Env = os.Getenv("ENV")
 	DatabaseURL = os.Getenv("DATABASE_URL")
 	WebhookSecret = os.Getenv("STYTCH_WEBHOOK_SECRET")
+	encryptionKeyStr := os.Getenv("ENCRYPTION_KEY")
 
 	if ProjectID == "" || Secret == "" {
 		log.Fatal("Missing required environment variables: STYTCH_PROJECT_ID and/or STYTCH_SECRET")
@@ -51,5 +53,15 @@ func init() {
 
 	if WebhookSecret == "" {
 		log.Fatal("Missing required environment variable: STYTCH_WEBHOOK_SECRET")
+	}
+
+	// Validate encryption key
+	if encryptionKeyStr == "" {
+		log.Fatal("Missing required environment variable: ENCRYPTION_KEY")
+	}
+
+	EncryptionKey = encryptionKeyStr
+	if len(EncryptionKey) < 32 {
+		log.Fatal("ENCRYPTION_KEY must be at least 32 characters long")
 	}
 }
