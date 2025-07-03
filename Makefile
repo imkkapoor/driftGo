@@ -6,7 +6,7 @@ MAIN_PATH=./cmd/server
 DOCKER_COMPOSE_FILE=docker-compose.yml
 MIGRATION_DIR=db/goose_migrations
 SQLC_CONFIG=sqlc.yaml
-SQLC_GEN_DIR=domain/user/sqlcgen
+SQLC_GEN_DIRS=domain/user domain/link
 
 # Database connection details (matching docker-compose.yml)
 DB_HOST=localhost
@@ -19,72 +19,109 @@ DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?ssl
 # Go build flags
 LDFLAGS=-ldflags "-X main.Version=$(shell git describe --tags --always --dirty)"
 
-.PHONY: help build run run-build clean docker-up docker-down docker-restart migrate-up migrate-down migrate-reset sqlc-gen sqlc-clean sqlc-reset test lint fmt vet
+.PHONY: help build run run-build clean docker-up docker-down docker-down-volumes docker-restart wait-for-db migrate-up migrate-down migrate-reset sqlc-gen sqlc-clean sqlc-reset test lint fmt vet dev-setup dev-clean dev-reset db-status db-connect
 
 # Default target
 help: ## Show this help message
-	@echo "Available targets:"
 	@echo ""
-	@echo "Docker Operations:"
-	@echo "  docker-up       - Start Docker containers"
-	@echo "  docker-down     - Stop and remove Docker containers"
-	@echo "  docker-restart  - Restart Docker containers"
+	@echo "🚀 driftGo Development Commands"
+	@echo "================================="
 	@echo ""
-	@echo "Database Operations:"
-	@echo "  migrate-up      - Run database migrations up"
-	@echo "  migrate-down    - Rollback database migrations"
-	@echo "  migrate-reset   - Reset database (down all, then up all)"
+	@echo "📦 Docker Operations:"
+	@echo "  docker-up           - Start Docker containers"
+	@echo "  docker-down         - Stop and remove Docker containers"
+	@echo "  docker-down-volumes - Stop containers AND delete all data (WARNING!)"
+	@echo "  docker-restart      - Restart Docker containers"
 	@echo ""
-	@echo "Build Operations:"
-	@echo "  build           - Build the application"
-	@echo "  run             - Run the application with Air (hot reload)"
-	@echo "  run-build       - Run the application without hot reload"
-	@echo "  clean           - Clean build artifacts"
+	@echo "🗄️  Database Operations:"
+	@echo "  migrate-up          - Run database migrations up"
+	@echo "  migrate-down        - Rollback database migrations"
+	@echo "  migrate-reset       - Reset database (down all, then up all)"
+	@echo "  db-status           - Check database migration status"
+	@echo "  db-connect          - Connect to database (requires psql)"
 	@echo ""
-	@echo "SQLC Operations:"
-	@echo "  sqlc-gen        - Generate SQLC code"
-	@echo "  sqlc-clean      - Clean SQLC generated files"
-	@echo "  sqlc-reset      - Clean and regenerate SQLC code"
+	@echo "🔨 Build Operations:"
+	@echo "  build               - Build the application"
+	@echo "  run                 - Run the application with Air (hot reload)"
+	@echo "  run-build           - Run the application without hot reload"
+	@echo "  clean               - Clean build artifacts"
 	@echo ""
-	@echo "Development:"
-	@echo "  test            - Run tests"
-	@echo "  lint            - Run linter"
-	@echo "  fmt             - Format code"
-	@echo "  vet             - Vet code"
+	@echo "⚙️  SQLC Operations:"
+	@echo "  sqlc-gen            - Generate SQLC code"
+	@echo "  sqlc-clean          - Clean SQLC generated files"
+	@echo "  sqlc-reset          - Clean and regenerate SQLC code"
 	@echo ""
-	@echo "Utilities:"
-	@echo "  help            - Show this help message"
+	@echo "🛠️  Development Workflow:"
+	@echo "  dev-setup           - Complete development setup"
+	@echo "  dev-clean           - Clean development environment (keeps data)"
+	@echo "  dev-reset           - Complete reset (WARNING: deletes all data!)"
+	@echo ""
+	@echo "🧪 Development Tools:"
+	@echo "  test                - Run tests"
+	@echo "  lint                - Run linter"
+	@echo "  fmt                 - Format code"
+	@echo "  vet                 - Vet code"
+	@echo ""
+	@echo "❓ Utilities:"
+	@echo "  help                - Show this help message"
+	@echo ""
+
+# Database readiness check function
+wait-for-db: ## Wait for database to be ready
+	@echo "⏳ Waiting for database to be ready..."
+	@timeout=30; \
+	while [ $$timeout -gt 0 ]; do \
+		if docker exec driftPSQL pg_isready -U $(DB_USER) -d $(DB_NAME) >/dev/null 2>&1; then \
+			echo "✅ Database is ready!"; \
+			break; \
+		fi; \
+		echo "⏳ Database not ready yet, waiting... ($$timeout seconds left)"; \
+		sleep 1; \
+		timeout=$$((timeout - 1)); \
+	done; \
+	if [ $$timeout -eq 0 ]; then \
+		echo "❌ Database failed to start within 30 seconds"; \
+		exit 1; \
+	fi
 
 # Docker Operations
 docker-up: ## Start Docker containers
-	@echo "Starting Docker containers..."
+	@echo "🐳 Starting Docker containers..."
 	docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
-	@echo "Docker containers started. Waiting for database to be ready..."
-	@echo "Database will be available at $(DB_HOST):$(DB_PORT)"
+	@echo "✅ Docker containers started successfully!"
+	@echo "📊 Database will be available at $(DB_HOST):$(DB_PORT)"
+	$(MAKE) wait-for-db
 
 docker-down: ## Stop and remove Docker containers
-	@echo "Stopping Docker containers..."
+	@echo "🛑 Stopping Docker containers..."
 	docker-compose -f $(DOCKER_COMPOSE_FILE) down
-	@echo "Docker containers stopped and removed"
+	@echo "✅ Docker containers stopped and removed"
+
+docker-down-volumes: ## Stop and remove Docker containers AND volumes (WARNING: Deletes all data!)
+	@echo "⚠️  WARNING: Stopping Docker containers and removing volumes..."
+	@echo "⚠️  This will delete ALL database data!"
+	docker-compose -f $(DOCKER_COMPOSE_FILE) down -v
+	@echo "🗑️  Docker containers and volumes removed"
 
 docker-restart: ## Restart Docker containers
-	@echo "Restarting Docker containers..."
+	@echo "🔄 Restarting Docker containers..."
 	docker-compose -f $(DOCKER_COMPOSE_FILE) restart
-	@echo "Docker containers restarted"
+	@echo "✅ Docker containers restarted"
 
 # Database Migration Operations
 migrate-up: ## Run database migrations up
-	@echo "Running database migrations up..."
+	@echo "📈 Running database migrations up..."
 	@if ! docker ps | grep -q driftPSQL; then \
-		echo "Database container is not running. Starting it first..."; \
+		echo "⚠️  Database container is not running. Starting it first..."; \
 		$(MAKE) docker-up; \
-		sleep 5; \
+	else \
+		$(MAKE) wait-for-db; \
 	fi
 	goose -dir $(MIGRATION_DIR) postgres "$(DB_URL)" up
-	@echo "Database migrations completed"
+	@echo "✅ Database migrations completed successfully!"
 
 migrate-down: ## Rollback database migrations
-	@echo "Rolling back database migrations..."
+	@echo "📉 Rolling back database migrations..."
 	goose -dir $(MIGRATION_DIR) postgres "$(DB_URL)" down
 	@echo "Database migrations rolled back"
 
@@ -116,7 +153,9 @@ run-build: ## Run the application without hot reload
 clean: ## Clean build artifacts
 	@echo "Cleaning build artifacts..."
 	rm -f $(BINARY_NAME)
-	rm -rf $(SQLC_GEN_DIR)
+	@for dir in $(SQLC_GEN_DIRS); do \
+		rm -f $$dir/*.gen.go; \
+	done
 	rm -rf tmp/
 	@echo "Build artifacts cleaned"
 
@@ -128,7 +167,9 @@ sqlc-gen: ## Generate SQLC code
 
 sqlc-clean: ## Clean SQLC generated files
 	@echo "Cleaning SQLC generated files..."
-	rm -rf $(SQLC_GEN_DIR)
+	@for dir in $(SQLC_GEN_DIRS); do \
+		rm -f $$dir/*.gen.go; \
+	done
 	@echo "SQLC generated files cleaned"
 
 sqlc-reset: sqlc-clean sqlc-gen ## Clean and regenerate SQLC code
@@ -161,6 +202,11 @@ dev-setup: docker-up migrate-up sqlc-gen ## Complete development setup
 
 dev-clean: docker-down clean ## Complete cleanup
 	@echo "Development environment cleaned up!"
+
+dev-reset: docker-down-volumes clean ## Complete reset (WARNING: Deletes all data!)
+	@echo "⚠️  WARNING: Development environment completely reset!"
+	@echo "⚠️  All database data has been deleted!"
+	@echo "⚠️  Run 'make dev-setup' to start fresh"
 
 # Database inspection (useful for debugging)
 db-status: ## Check database migration status
