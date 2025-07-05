@@ -86,37 +86,6 @@ func (s *Service) CreateLinkToken(ctx context.Context) (*LinkTokenCallResponse, 
 	}, nil
 }
 
-func (s *Service) CreateLinkTokenForUser(ctx context.Context, stytchUserID string) (*LinkTokenCallResponse, error) {
-	user, err := s.userService.GetUserByStytchID(ctx, stytchUserID)
-	if err != nil {
-		return nil, err
-	}
-
-	plaidUser := plaid.LinkTokenCreateRequestUser{
-		ClientUserId: user.Uuid.String(),
-	}
-
-	request := plaid.NewLinkTokenCreateRequest(
-		"drift",
-		"en",
-		[]plaid.CountryCode{plaid.COUNTRYCODE_CA},
-		plaidUser,
-	)
-
-	request.SetProducts([]plaid.Products{plaid.PRODUCTS_AUTH, plaid.PRODUCTS_IDENTITY})
-
-	linkToken, _, err := s.client.PlaidApi.LinkTokenCreate(ctx).LinkTokenCreateRequest(*request).Execute()
-	if err != nil {
-		return nil, err
-	}
-
-	return &LinkTokenCallResponse{
-		LinkToken:  linkToken.GetLinkToken(),
-		Expiration: linkToken.GetExpiration(),
-		RequestID:  linkToken.GetRequestId(),
-	}, nil
-}
-
 func (s *Service) ExchangePublicTokenAndSave(ctx context.Context, publicToken string) error {
 	accessTokenResponse, err := s.exchangePublicToken(ctx, publicToken)
 	if err != nil {

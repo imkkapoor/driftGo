@@ -360,7 +360,6 @@ The server implements graceful shutdown handling:
 
 ### Users Table
 - `id` - Auto-incrementing primary key
-- `uuid` - Unique identifier
 - `stytch_user_id` - Stytch user identifier
 - `first_name` - User's first name
 - `last_name` - User's last name
