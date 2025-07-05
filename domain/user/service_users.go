@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -35,10 +34,7 @@ func NewService(db *pgxpool.Pool) *Service {
 exec
 */
 func (s *Service) CreateUser(ctx context.Context, stytchUserID, firstName, lastName, email, status string) (*User, error) {
-	userUUID := uuid.New()
-
 	arg := CreateUserParams{
-		Uuid:         userUUID,
 		StytchUserID: stytchUserID,
 		FirstName:    pgtype.Text{String: firstName, Valid: firstName != ""},
 		LastName:     pgtype.Text{String: lastName, Valid: lastName != ""},
@@ -97,21 +93,6 @@ returns one
 */
 func (s *Service) GetUserByID(ctx context.Context, userID int64) (*User, error) {
 	dbUser, err := s.database.GetUserByID(ctx, userID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrUserNotFound
-		}
-		return nil, err
-	}
-
-	return &dbUser, nil
-}
-
-/*
-returns one
-*/
-func (s *Service) GetUserByUUID(ctx context.Context, userUUID uuid.UUID) (*User, error) {
-	dbUser, err := s.database.GetUserByUUID(ctx, userUUID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrUserNotFound

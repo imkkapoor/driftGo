@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (uuid, stytch_user_id, first_name, last_name, email, status)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users (stytch_user_id, first_name, last_name, email, status)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: UpdateUser :one
@@ -14,9 +14,6 @@ SELECT * FROM users WHERE stytch_user_id = $1;
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE id = $1;
-
--- name: GetUserByUUID :one
-SELECT * FROM users WHERE uuid = $1;
 
 -- name: GetUserByEmail :one
 SELECT * FROM users WHERE email = $1;

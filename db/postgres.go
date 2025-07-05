@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"log"
 	"time"
 
 	"driftGo/config"
@@ -11,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
+	log "github.com/sirupsen/logrus"
 )
 
 func runMigrations() error {
@@ -20,18 +20,17 @@ func runMigrations() error {
 	}
 	defer db.Close()
 
+	log.Info("Running database migrations...")
 	if err := goose.Up(db, "db/goose_migrations"); err != nil {
 		return err
 	}
-	log.Println("goose: Migrations completed successfully")
 	return nil
 }
 
-// InitDB initializes and returns a database connection pool
 func InitDB() *pgxpool.Pool {
 	dbURL := config.DatabaseURL
 	if dbURL == "" {
-		log.Fatal("postgres: DATABASE_URL is not set in config")
+		log.Fatal("DATABASE_URL is not set in config")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -39,18 +38,17 @@ func InitDB() *pgxpool.Pool {
 
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		log.Fatalf("postgres: Unable to connect to database: %v", err)
+		log.Fatalf("Unable to connect to database: %v", err)
 	}
 
 	if err = pool.Ping(ctx); err != nil {
-		log.Fatalf("postgres: Database ping failed: %v", err)
+		log.Fatalf("Database ping failed: %v", err)
 	}
 
-	log.Println("postgres: Successfully connected to PostgreSQL")
+	log.Info("Successfully connected to PostgreSQL")
 
-	// Run migrations after successful connection
 	if err := runMigrations(); err != nil {
-		log.Fatalf("goose: Failed to run migrations: %v", err)
+		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	return pool
