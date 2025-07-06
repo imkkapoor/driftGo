@@ -75,16 +75,11 @@ returns many
 */
 func (s *Service) GetLinkItemsByUser(ctx context.Context) ([]LinkItem, error) {
 	userID := utils.GetUserID(ctx)
-	if userID == "" {
+	if userID == 0 {
 		return nil, errors.New("user ID not found in context")
 	}
 
-	user, err := s.userService.GetUserByStytchID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	linkItems, err := s.database.GetLinkItemsByUserID(ctx, user.ID)
+	linkItems, err := s.database.GetLinkItemsByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -98,6 +93,23 @@ func (s *Service) GetLinkItemsByUser(ctx context.Context) ([]LinkItem, error) {
 	}
 
 	return linkItems, nil
+}
+
+/*
+returns one
+*/
+func (s *Service) GetAccessTokenByAccountID(ctx context.Context, accountID string) (string, error) {
+	accessToken, err := s.database.GetAccessTokenByAccountID(ctx, accountID)
+	if err != nil {
+		return "", err
+	}
+
+	decryptedAccessToken, err := s.encryptor.Decrypt(accessToken)
+	if err != nil {
+		return "", err
+	}
+
+	return decryptedAccessToken, nil
 }
 
 /*

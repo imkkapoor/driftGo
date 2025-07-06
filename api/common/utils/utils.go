@@ -5,7 +5,8 @@ import (
 )
 
 type AuthContext struct {
-	UserID       string
+	UserID       int64
+	StytchUserID string
 	SessionToken string
 }
 
@@ -29,9 +30,16 @@ func GetSessionToken(ctx context.Context) string {
 	return ""
 }
 
-func GetUserID(ctx context.Context) string {
+func GetUserID(ctx context.Context) int64 {
 	if auth, ok := ctx.Value(authCtxKey).(AuthContext); ok {
 		return auth.UserID
+	}
+	return 0
+}
+
+func GetStytchUserID(ctx context.Context) string {
+	if auth, ok := ctx.Value(authCtxKey).(AuthContext); ok {
+		return auth.StytchUserID
 	}
 	return ""
 }
