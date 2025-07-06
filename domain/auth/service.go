@@ -120,7 +120,7 @@ func (s *Service) ExtendSession(ctx context.Context, sessionDurationMinutes int3
 
 func (s *Service) GetUser(ctx context.Context) (*users.GetResponse, error) {
 	params := &users.GetParams{
-		UserID: utils.GetUserID(ctx),
+		UserID: utils.GetStytchUserID(ctx),
 	}
 
 	return s.client.Users.Get(ctx, params)

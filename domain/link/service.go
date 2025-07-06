@@ -6,9 +6,11 @@ import (
 	"driftGo/domain/user"
 	"driftGo/pkg/encryption"
 	"errors"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plaid/plaid-go/v35/plaid"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -62,13 +64,14 @@ func NewService(clientID, secret, env string, userService user.UserInterface, db
 
 func (s *Service) CreateLinkToken(ctx context.Context) (*LinkTokenCallResponse, error) {
 	user := plaid.LinkTokenCreateRequestUser{
-		ClientUserId: utils.GetUserID(ctx),
+		ClientUserId: strconv.FormatInt(utils.GetUserID(ctx), 10),
 	}
 
 	request := plaid.NewLinkTokenCreateRequest(
 		"drift",
 		"en",
-		[]plaid.CountryCode{plaid.COUNTRYCODE_CA},
+		// check country code
+		[]plaid.CountryCode{plaid.COUNTRYCODE_US, plaid.COUNTRYCODE_CA},
 		user,
 	)
 
@@ -93,13 +96,8 @@ func (s *Service) ExchangePublicTokenAndSave(ctx context.Context, publicToken st
 	}
 
 	userID := utils.GetUserID(ctx)
-	if userID == "" {
+	if userID == 0 {
 		return errors.New("user ID not found in context")
-	}
-
-	user, err := s.userService.GetUserByStytchID(ctx, userID)
-	if err != nil {
-		return err
 	}
 
 	institutionID, institutionName, err := s.GetInstitutionMetadata(ctx, accessTokenResponse.AccessToken)
@@ -107,7 +105,7 @@ func (s *Service) ExchangePublicTokenAndSave(ctx context.Context, publicToken st
 		return err
 	}
 
-	linkItem, err := s.CreateLinkItem(ctx, user.ID, accessTokenResponse.AccessToken, accessTokenResponse.ItemID, institutionID, institutionName)
+	linkItem, err := s.CreateLinkItem(ctx, userID, accessTokenResponse.AccessToken, accessTokenResponse.ItemID, institutionID, institutionName)
 	if err != nil {
 		return err
 	}
@@ -117,7 +115,7 @@ func (s *Service) ExchangePublicTokenAndSave(ctx context.Context, publicToken st
 		return err
 	}
 
-	err = s.SaveAccountsFromPlaid(ctx, accounts, linkItem.ID, user.ID)
+	err = s.SaveAccountsFromPlaid(ctx, accounts, linkItem.ID, userID)
 	if err != nil {
 		return err
 	}
@@ -134,6 +132,26 @@ func (s *Service) GetAccounts(ctx context.Context, accessToken string) ([]plaid.
 	}
 
 	return response.GetAccounts(), nil
+}
+
+func (s *Service) CreateStripeProcessorToken(ctx context.Context, accessToken string, accountID string) (string, error) {
+	decryptedAccountID, err := s.encryptor.Decrypt(accountID)
+	if err != nil {
+		return "", err
+	}
+
+	request := plaid.NewProcessorStripeBankAccountTokenCreateRequest(accessToken, decryptedAccountID)
+	log.WithField("request", request).Info("Request for stripe processor token")
+
+	response, _, err := s.client.PlaidApi.ProcessorStripeBankAccountTokenCreate(ctx).ProcessorStripeBankAccountTokenCreateRequest(*request).Execute()
+	if err != nil {
+		if plaidErr, ok := err.(plaid.GenericOpenAPIError); ok {
+			log.Error("Plaid error: ", string(plaidErr.Body()))
+		}
+		return "", err
+	}
+
+	return response.GetStripeBankAccountToken(), nil
 }
 
 func (s *Service) exchangePublicToken(ctx context.Context, publicToken string) (*AccessTokenCallResponse, error) {
