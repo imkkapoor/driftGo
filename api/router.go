@@ -24,6 +24,7 @@ func SetupRoutes(r *chi.Mux, services *Services) chi.Router {
 
 	r.Group(func(protected chi.Router) {
 		validateSessionMiddleware.SetAuthService(services.Auth)
+		validateSessionMiddleware.SetUserService(services.User)
 		protected.Use(validateSessionMiddleware.AuthenticateSession)
 
 		// Setup auth routes

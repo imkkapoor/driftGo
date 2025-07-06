@@ -22,6 +22,12 @@ SELECT * FROM link_item
 WHERE user_id = $1
 ORDER BY created_at DESC;
 
+-- name: GetAccessTokenByAccountID :one
+SELECT li.access_token
+FROM link_account la
+JOIN link_item li ON la.item_id = li.id
+WHERE la.account_id = $1;
+
 -- name: DeleteLinkItem :exec
 DELETE FROM link_item
 WHERE id = $1;

@@ -26,6 +26,7 @@ func SetupRoutes(r chi.Router, service *link.Service) {
 	handler := &Handler{service: service}
 	r.Post("/create", handler.createLinkToken)
 	r.Post("/exchange", handler.exchangePublicToken)
+	r.Post("/createStripeProcessorToken", handler.createStripeProcessorToken)
 }
 
 /*
@@ -73,6 +74,44 @@ func (h *Handler) exchangePublicToken(w http.ResponseWriter, r *http.Request) {
 		errors.InternalErrorHandler(w)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+/*
+createStripeProcessorToken handles the request to create a new Stripe processor token.
+This is used to create a new Stripe processor token for a user's bank account.
+The processor token is required to create a new Stripe customer.
+*/
+func (h *Handler) createStripeProcessorToken(w http.ResponseWriter, r *http.Request) {
+	var createStripeProcessorTokenCallRequest CreateStripeProcessorTokenCallRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&createStripeProcessorTokenCallRequest); err != nil {
+		log.WithError(err).Error("Failed to decode create stripe processor token request")
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
+		return
+	}
+
+	if !validation.ValidateRequest(w, createStripeProcessorTokenCallRequest) {
+		return
+	}
+
+	accessToken, err := h.service.GetAccessTokenByAccountID(r.Context(), createStripeProcessorTokenCallRequest.AccountID)
+	if err != nil {
+		log.WithError(err).Error("Failed to get access token by plaid account id")
+		errors.InternalErrorHandler(w)
+		return
+	}
+
+	stripeProcessorToken, err := h.service.CreateStripeProcessorToken(r.Context(), accessToken, createStripeProcessorTokenCallRequest.AccountID)
+	if err != nil {
+		log.WithError(err).Error("Failed to create stripe processor token")
+		errors.InternalErrorHandler(w)
+		return
+	}
+
+	//remove after testing
+	log.WithField("stripe_processor_token", stripeProcessorToken).Info("Stripe processor token created")
 
 	w.WriteHeader(http.StatusOK)
 }

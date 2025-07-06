@@ -1,6 +1,6 @@
 -- name: CreateLinkAccount :one
 INSERT INTO link_account (
-    plaid_account_id,
+    account_id,
     item_id,
     user_id,
     name,
@@ -16,9 +16,9 @@ INSERT INTO link_account (
 SELECT * FROM link_account
 WHERE id = $1;
 
--- name: GetLinkAccountByPlaidAccountID :one
+-- name: GetLinkAccountByAccountID :one
 SELECT * FROM link_account
-WHERE plaid_account_id = $1;
+WHERE account_id = $1;
 
 -- name: GetLinkAccountsByItemID :many
 SELECT * FROM link_account
@@ -34,9 +34,9 @@ ORDER BY created_at DESC;
 DELETE FROM link_account
 WHERE id = $1;
 
--- name: DeleteLinkAccountByPlaidAccountID :exec
+-- name: DeleteLinkAccountByAccountID :exec
 DELETE FROM link_account
-WHERE plaid_account_id = $1;
+WHERE account_id = $1;
 
 -- name: DeleteLinkAccountsByItemID :exec
 DELETE FROM link_account

@@ -15,6 +15,7 @@ Services holds all the service instances
 type Services struct {
 	Auth    *authDomain.Service
 	Link    *linkDomain.Service
+	User    *userDomain.Service
 	Webhook *webhook.WebhookHandler
 }
 
@@ -53,6 +54,7 @@ func InitializeServices() (*Services, error) {
 	return &Services{
 		Auth:    authService,
 		Link:    linkService,
+		User:    userService,
 		Webhook: webhookHandler,
 	}, nil
 }
