@@ -4,6 +4,7 @@ import (
 	"driftGo/api/common/errors"
 	"driftGo/api/common/utils"
 	domauth "driftGo/domain/auth"
+	"driftGo/domain/user"
 	"net/http"
 	"strings"
 
@@ -17,6 +18,7 @@ var (
 		"/auth/authenticate/",
 	}
 	authService *domauth.Service
+	userService user.UserInterface
 )
 
 /*
@@ -24,6 +26,13 @@ SetAuthService sets the auth service instance for the middleware
 */
 func SetAuthService(service *domauth.Service) {
 	authService = service
+}
+
+/*
+SetUserService sets the user service instance for the middleware
+*/
+func SetUserService(service user.UserInterface) {
+	userService = service
 }
 
 func isPublicRoute(path string) bool {
@@ -65,8 +74,17 @@ func AuthenticateSession(next http.Handler) http.Handler {
 			return
 		}
 
+		// Look up the internal user ID using the Stytch user ID
+		internalUser, err := userService.GetUserByStytchID(r.Context(), response.User.UserID)
+		if err != nil {
+			log.WithError(err).WithField("stytch_user_id", response.User.UserID).Error("Failed to find internal user")
+			errors.UnauthorizedErrorHandler(w, "User not found")
+			return
+		}
+
 		authContext := utils.AuthContext{
-			UserID:       response.User.UserID,
+			UserID:       internalUser.ID,
+			StytchUserID: response.User.UserID,
 			SessionToken: sessionToken,
 		}
 		ctx := utils.WithAuthContext(r.Context(), authContext)

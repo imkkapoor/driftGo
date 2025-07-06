@@ -13,21 +13,21 @@ import (
 /*
 returns one
 */
-func (s *Service) CreateLinkAccount(ctx context.Context, plaidAccountID string, itemID, userID int64, name, officialName, mask, subtype, accountType string) (*LinkAccount, error) {
-	encryptedPlaidAccountID, err := s.encryptor.Encrypt(plaidAccountID)
+func (s *Service) CreateLinkAccount(ctx context.Context, accountID string, itemID, userID int64, name, officialName, mask, subtype, accountType string) (*LinkAccount, error) {
+	encryptedAccountID, err := s.encryptor.Encrypt(accountID)
 	if err != nil {
 		return nil, err
 	}
 
 	params := CreateLinkAccountParams{
-		PlaidAccountID: encryptedPlaidAccountID,
-		ItemID:         itemID,
-		UserID:         userID,
-		Name:           pgtype.Text{String: name, Valid: name != ""},
-		OfficialName:   pgtype.Text{String: officialName, Valid: officialName != ""},
-		Mask:           pgtype.Text{String: mask, Valid: mask != ""},
-		Subtype:        pgtype.Text{String: subtype, Valid: subtype != ""},
-		Type:           pgtype.Text{String: accountType, Valid: accountType != ""},
+		AccountID:    encryptedAccountID,
+		ItemID:       itemID,
+		UserID:       userID,
+		Name:         pgtype.Text{String: name, Valid: name != ""},
+		OfficialName: pgtype.Text{String: officialName, Valid: officialName != ""},
+		Mask:         pgtype.Text{String: mask, Valid: mask != ""},
+		Subtype:      pgtype.Text{String: subtype, Valid: subtype != ""},
+		Type:         pgtype.Text{String: accountType, Valid: accountType != ""},
 	}
 
 	linkAccount, err := s.database.CreateLinkAccount(ctx, params)
@@ -35,11 +35,11 @@ func (s *Service) CreateLinkAccount(ctx context.Context, plaidAccountID string, 
 		return nil, err
 	}
 
-	decryptedPlaidAccountID, err := s.encryptor.Decrypt(linkAccount.PlaidAccountID)
+	decryptedAccountID, err := s.encryptor.Decrypt(linkAccount.AccountID)
 	if err != nil {
 		return nil, err
 	}
-	linkAccount.PlaidAccountID = decryptedPlaidAccountID
+	linkAccount.AccountID = decryptedAccountID
 
 	return &linkAccount, nil
 }
@@ -56,11 +56,11 @@ func (s *Service) GetLinkAccountByID(ctx context.Context, ID int64) (*LinkAccoun
 		return nil, err
 	}
 
-	decryptedPlaidAccountID, err := s.encryptor.Decrypt(linkAccount.PlaidAccountID)
+	decryptedAccountID, err := s.encryptor.Decrypt(linkAccount.AccountID)
 	if err != nil {
 		return nil, err
 	}
-	linkAccount.PlaidAccountID = decryptedPlaidAccountID
+	linkAccount.AccountID = decryptedAccountID
 
 	return &linkAccount, nil
 }
@@ -68,14 +68,14 @@ func (s *Service) GetLinkAccountByID(ctx context.Context, ID int64) (*LinkAccoun
 /*
 returns one
 */
-func (s *Service) GetLinkAccountByPlaidAccountID(ctx context.Context, plaidAccountID string) (*LinkAccount, error) {
+func (s *Service) GetLinkAccountByAccountID(ctx context.Context, accountID string) (*LinkAccount, error) {
 	// Encrypt the search parameter since the database stores encrypted values
-	encryptedPlaidAccountID, err := s.encryptor.Encrypt(plaidAccountID)
+	encryptedAccountID, err := s.encryptor.Encrypt(accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	linkAccount, err := s.database.GetLinkAccountByPlaidAccountID(ctx, encryptedPlaidAccountID)
+	linkAccount, err := s.database.GetLinkAccountByAccountID(ctx, encryptedAccountID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrLinkNotFound
@@ -83,11 +83,11 @@ func (s *Service) GetLinkAccountByPlaidAccountID(ctx context.Context, plaidAccou
 		return nil, err
 	}
 
-	decryptedPlaidAccountID, err := s.encryptor.Decrypt(linkAccount.PlaidAccountID)
+	decryptedAccountID, err := s.encryptor.Decrypt(linkAccount.AccountID)
 	if err != nil {
 		return nil, err
 	}
-	linkAccount.PlaidAccountID = decryptedPlaidAccountID
+	linkAccount.AccountID = decryptedAccountID
 
 	return &linkAccount, nil
 }
@@ -102,11 +102,11 @@ func (s *Service) GetLinkAccountsByItemID(ctx context.Context, itemID int64) ([]
 	}
 
 	for i := range linkAccounts {
-		decryptedPlaidAccountID, err := s.encryptor.Decrypt(linkAccounts[i].PlaidAccountID)
+		decryptedAccountID, err := s.encryptor.Decrypt(linkAccounts[i].AccountID)
 		if err != nil {
 			return nil, err
 		}
-		linkAccounts[i].PlaidAccountID = decryptedPlaidAccountID
+		linkAccounts[i].AccountID = decryptedAccountID
 	}
 
 	return linkAccounts, nil
@@ -117,26 +117,21 @@ returns many
 */
 func (s *Service) GetLinkAccountsByUser(ctx context.Context) ([]LinkAccount, error) {
 	userID := utils.GetUserID(ctx)
-	if userID == "" {
+	if userID == 0 {
 		return nil, errors.New("user ID not found in context")
 	}
 
-	user, err := s.userService.GetUserByStytchID(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	linkAccounts, err := s.database.GetLinkAccountsByUserID(ctx, user.ID)
+	linkAccounts, err := s.database.GetLinkAccountsByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	for i := range linkAccounts {
-		decryptedPlaidAccountID, err := s.encryptor.Decrypt(linkAccounts[i].PlaidAccountID)
+		decryptedAccountID, err := s.encryptor.Decrypt(linkAccounts[i].AccountID)
 		if err != nil {
 			return nil, err
 		}
-		linkAccounts[i].PlaidAccountID = decryptedPlaidAccountID
+		linkAccounts[i].AccountID = decryptedAccountID
 	}
 
 	return linkAccounts, nil
@@ -152,13 +147,13 @@ func (s *Service) DeleteLinkAccount(ctx context.Context, id int64) error {
 /*
 exec
 */
-func (s *Service) DeleteLinkAccountByPlaidAccountID(ctx context.Context, plaidAccountID string) error {
-	encryptedPlaidAccountID, err := s.encryptor.Encrypt(plaidAccountID)
+func (s *Service) DeleteLinkAccountByAccountID(ctx context.Context, accountID string) error {
+	encryptedAccountID, err := s.encryptor.Encrypt(accountID)
 	if err != nil {
 		return err
 	}
 
-	return s.database.DeleteLinkAccountByPlaidAccountID(ctx, encryptedPlaidAccountID)
+	return s.database.DeleteLinkAccountByAccountID(ctx, encryptedAccountID)
 }
 
 /*
