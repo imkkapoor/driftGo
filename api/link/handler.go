@@ -4,11 +4,11 @@ import (
 	"driftGo/api/common/errors"
 	"driftGo/api/common/validation"
 	"driftGo/domain/link"
+	"driftGo/pkg/logger"
 	"encoding/json"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -37,14 +37,14 @@ The link token is required to start the Plaid Link flow.
 func (h *Handler) createLinkToken(w http.ResponseWriter, r *http.Request) {
 	linkToken, err := h.service.CreateLinkToken(r.Context())
 	if err != nil {
-		log.WithError(err).Error("Failed to create link token")
+		logger.Log.WithError(err).Error("Failed to create link token")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusInternalServerError, "Failed to create link token", errors.ErrCodeInternalError))
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(linkToken); err != nil {
-		log.WithError(err).Error("Failed to encode link token response")
+		logger.Log.WithError(err).Error("Failed to encode link token response")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -59,7 +59,7 @@ func (h *Handler) exchangePublicToken(w http.ResponseWriter, r *http.Request) {
 	var exchangePublicTokenCallRequest ExchangePublicTokenCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&exchangePublicTokenCallRequest); err != nil {
-		log.WithError(err).Error("Failed to decode exchange token request")
+		logger.Log.WithError(err).Error("Failed to decode exchange token request")
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
@@ -70,7 +70,7 @@ func (h *Handler) exchangePublicToken(w http.ResponseWriter, r *http.Request) {
 
 	err := h.service.ExchangePublicTokenAndSave(r.Context(), exchangePublicTokenCallRequest.PublicToken)
 	if err != nil {
-		log.WithError(err).Error("Failed to exchange public token and save")
+		logger.Log.WithError(err).Error("Failed to exchange public token and save")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -87,7 +87,7 @@ func (h *Handler) createStripeProcessorToken(w http.ResponseWriter, r *http.Requ
 	var createStripeProcessorTokenCallRequest CreateStripeProcessorTokenCallRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&createStripeProcessorTokenCallRequest); err != nil {
-		log.WithError(err).Error("Failed to decode create stripe processor token request")
+		logger.Log.WithError(err).Error("Failed to decode create stripe processor token request")
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
@@ -98,20 +98,20 @@ func (h *Handler) createStripeProcessorToken(w http.ResponseWriter, r *http.Requ
 
 	accessToken, err := h.service.GetAccessTokenByAccountID(r.Context(), createStripeProcessorTokenCallRequest.AccountID)
 	if err != nil {
-		log.WithError(err).Error("Failed to get access token by plaid account id")
+		logger.Log.WithError(err).Error("Failed to get access token by plaid account id")
 		errors.InternalErrorHandler(w)
 		return
 	}
 
 	stripeProcessorToken, err := h.service.CreateStripeProcessorToken(r.Context(), accessToken, createStripeProcessorTokenCallRequest.AccountID)
 	if err != nil {
-		log.WithError(err).Error("Failed to create stripe processor token")
+		logger.Log.WithError(err).Error("Failed to create stripe processor token")
 		errors.InternalErrorHandler(w)
 		return
 	}
 
 	//remove after testing
-	log.WithField("stripe_processor_token", stripeProcessorToken).Info("Stripe processor token created")
+	logger.Log.WithField("stripe_processor_token", stripeProcessorToken).Info("Stripe processor token created")
 
 	w.WriteHeader(http.StatusOK)
 }

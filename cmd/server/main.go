@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -21,7 +20,7 @@ func main() {
 
 	services, err := api.InitializeServices()
 	if err != nil {
-		log.Fatal("Failed to initialize services:", err)
+		logger.Log.Fatal("Failed to initialize services:", err)
 	}
 
 	api.SetupRoutes(r, services)
@@ -30,14 +29,14 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	log.Println(`
+	logger.Log.Println(`
      __    _ _____  _____   
  ___/ /___(_) _/ /_/ ___/__ 
 / _  / __/ / _/ __/ (_ / _ \
 \_,_/_/ /_/_/ \__/\___/\___/                                  
    `)
 
-	log.Println("Server running on port", port)
+	logger.Log.Println("Server running on port", port)
 
 	// Create server
 	srv := &http.Server{
@@ -48,7 +47,7 @@ func main() {
 	// Start server in a goroutine
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			logger.Log.Fatalf("Server error: %v", err)
 		}
 	}()
 
@@ -57,7 +56,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("Shutting down server...")
+	logger.Log.Println("Shutting down server...")
 
 	// Create a deadline for server shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -65,8 +64,8 @@ func main() {
 
 	// Shutdown the server
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		logger.Log.Fatal("Server forced to shutdown:", err)
 	}
 
-	log.Println("Server exited")
+	logger.Log.Println("Server exited")
 }

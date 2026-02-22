@@ -26,7 +26,8 @@ type AttachOAuthCallRequest struct {
 }
 
 type AuthenticateOAuthCallRequest struct {
-	Token string `json:"token"`
+	Token        string `json:"token"`
+	CodeVerifier string `json:"code_verifier"`
 }
 
 type ExtendSessionCallRequest struct {

@@ -11,6 +11,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Log is the global logger instance that should be used throughout the application
+var Log = log.New()
+
 type JustProjectNameFormatter struct {
 	log.TextFormatter
 }
@@ -48,10 +51,10 @@ func (f *JustProjectNameFormatter) Format(entry *log.Entry) ([]byte, error) {
 }
 
 func Init(env string) {
-	log.SetOutput(os.Stdout)
-	log.SetReportCaller(true)
+	Log.SetOutput(os.Stdout)
+	Log.SetReportCaller(true)
 
-	log.SetFormatter(&JustProjectNameFormatter{
+	Log.SetFormatter(&JustProjectNameFormatter{
 		TextFormatter: log.TextFormatter{
 			FullTimestamp: true,
 			DisableColors: false,
@@ -59,9 +62,9 @@ func Init(env string) {
 	})
 
 	if env == "production" {
-		log.SetLevel(log.InfoLevel)
+		Log.SetLevel(log.InfoLevel)
 	} else {
-		log.SetLevel(log.DebugLevel)
+		Log.SetLevel(log.DebugLevel)
 	}
 }
 
@@ -88,7 +91,7 @@ func RequestLogger(next http.Handler) http.Handler {
 		status := ww.Status()
 		color := statusColor(status)
 
-		log.Infof("%s %s - %s%d\033[0m in %s%s\033[0m from %s",
+		Log.Infof("%s %s - %s%d\033[0m in %s%s\033[0m from %s",
 			r.Method,
 			r.URL.Path,
 			color,

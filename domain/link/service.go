@@ -5,12 +5,12 @@ import (
 	"driftGo/api/common/utils"
 	"driftGo/domain/user"
 	"driftGo/pkg/encryption"
+	"driftGo/pkg/logger"
 	"errors"
 	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plaid/plaid-go/v35/plaid"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -141,12 +141,12 @@ func (s *Service) CreateStripeProcessorToken(ctx context.Context, accessToken st
 	}
 
 	request := plaid.NewProcessorStripeBankAccountTokenCreateRequest(accessToken, decryptedAccountID)
-	log.WithField("request", request).Info("Request for stripe processor token")
+	logger.Log.WithField("request", request).Info("Request for stripe processor token")
 
 	response, _, err := s.client.PlaidApi.ProcessorStripeBankAccountTokenCreate(ctx).ProcessorStripeBankAccountTokenCreateRequest(*request).Execute()
 	if err != nil {
 		if plaidErr, ok := err.(plaid.GenericOpenAPIError); ok {
-			log.Error("Plaid error: ", string(plaidErr.Body()))
+			logger.Log.Error("Plaid error: ", string(plaidErr.Body()))
 		}
 		return "", err
 	}

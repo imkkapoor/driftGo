@@ -4,10 +4,9 @@ import (
 	"driftGo/api/common/errors"
 	"driftGo/api/common/validation"
 	"driftGo/domain/auth"
+	"driftGo/pkg/logger"
 	"encoding/json"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/schema"
@@ -29,6 +28,7 @@ func SetupRoutes(r chi.Router, service *auth.Service) {
 	r.Route("/authenticate", func(r chi.Router) {
 		r.Post("/OAuth", handler.authenticateOAuthCall)
 		r.Post("/magiclink", handler.authenticateMagicLinkCall)
+		r.Get("/session", handler.authenticateSessionCall)
 	})
 	r.Post("/setPassword", handler.setPasswordCall)
 	r.Post("/login", handler.loginCall)
@@ -64,7 +64,7 @@ func (h *Handler) sendCreateAccountMagicLinkCall(w http.ResponseWriter, r *http.
 
 	resp, err := h.service.SendCreateAccountMagicLink(r.Context(), sendCreateAccountMagicLinkCallRequest.Email, sendCreateAccountMagicLinkCallRequest.CodeChallenge)
 	if err != nil {
-		log.WithError(err).Error("Failed to send create account magic link")
+		logger.Log.WithError(err).Error("Failed to send create account magic link")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -95,7 +95,7 @@ func (h *Handler) setPasswordCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.SetPasswordBySession(r.Context(), setPasswordBySessionCallRequest.Password, setPasswordBySessionCallRequest.SessionDurationMinutes)
 	if err != nil {
-		log.WithError(err).Error("Failed to set password")
+		logger.Log.WithError(err).Error("Failed to set password")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Failed to set password. Please try again.", errors.ErrCodeAuthentication))
 		return
 	}
@@ -126,10 +126,20 @@ func (h *Handler) authenticateMagicLinkCall(w http.ResponseWriter, r *http.Reque
 
 	resp, err := h.service.AuthenticateMagicLink(r.Context(), authenticateMagicLinkCallRequest.Token, authenticateMagicLinkCallRequest.CodeVerifier)
 	if err != nil {
-		log.WithError(err).Error("Failed to authenticate magic link")
+		logger.Log.WithError(err).Error("Failed to authenticate magic link")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Magic link authentication failed", errors.ErrCodeAuthentication))
 		return
 	}
+
+	// Set session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_jwt",
+		Value:    resp.SessionJWT,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -157,10 +167,29 @@ func (h *Handler) loginCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.Login(r.Context(), loginCallRequest.Email, loginCallRequest.Password)
 	if err != nil {
-		log.WithError(err).Error("Failed to login")
+		logger.Log.WithError(err).Error("Failed to login")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid email or password", errors.ErrCodeAuthentication))
 		return
 	}
+
+	// Set session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_jwt",
+		Value:    resp.SessionJWT,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    resp.SessionToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -172,13 +201,59 @@ func (h *Handler) loginCall(w http.ResponseWriter, r *http.Request) {
 /*
 logoutCall handles the request to log out a user.
 This is used in the logout flow.
-The request body should contain the session token.
+The request body should contain the session JWT.
 */
 func (h *Handler) logoutCall(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.service.Logout(r.Context())
 	if err != nil {
-		log.WithError(err).Error("Failed to logout")
+		logger.Log.WithError(err).Error("Failed to logout")
 		errors.InternalErrorHandler(w)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_jwt",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		errors.InternalErrorHandler(w)
+		return
+	}
+}
+
+/*
+authenticateSessionCall handles the request to check if a session is active.
+This is used to validate session tokens.
+*/
+func (h *Handler) authenticateSessionCall(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("session_token")
+	if err != nil || cookie.Value == "" {
+		logger.Log.Error("Missing or invalid session cookie")
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Missing or invalid session cookie", errors.ErrCodeAuthentication))
+		return
+	}
+
+	resp, err := h.service.AuthenticateSession(r.Context(), cookie.Value)
+	if err != nil {
+		logger.Log.WithError(err).Error("Failed to authenticate session")
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid session", errors.ErrCodeAuthentication))
 		return
 	}
 
@@ -205,12 +280,30 @@ func (h *Handler) authenticateOAuthCall(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	resp, err := h.service.AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest.Token)
+	resp, err := h.service.AuthenticateOAuth(r.Context(), authenticateOAuthCallRequest.Token, authenticateOAuthCallRequest.CodeVerifier)
 	if err != nil {
-		log.WithError(err).Error("Failed to authenticate OAuth")
+		logger.Log.WithError(err).Error("Failed to authenticate OAuth")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "OAuth authentication failed", errors.ErrCodeAuthentication))
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_jwt",
+		Value:    resp.SessionJWT,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    resp.SessionToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -237,7 +330,7 @@ func (h *Handler) attachOAuthCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.AttachOAuth(r.Context(), attachOAuthCallRequest.UserId, attachOAuthCallRequest.Provider)
 	if err != nil {
-		log.WithError(err).Error("Failed to attach OAuth")
+		logger.Log.WithError(err).Error("Failed to attach OAuth")
 		errors.InternalErrorHandler(w)
 		return
 	}
@@ -267,7 +360,7 @@ func (h *Handler) extendSessionCall(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := h.service.ExtendSession(r.Context(), extendSessionCallRequest.SessionDurationMinutes)
 	if err != nil {
-		log.WithError(err).Error("Failed to extend session")
+		logger.Log.WithError(err).Error("Failed to extend session")
 		errors.InternalErrorHandler(w)
 		return
 	}

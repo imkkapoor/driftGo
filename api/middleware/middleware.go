@@ -5,10 +5,9 @@ import (
 	"driftGo/api/common/utils"
 	domauth "driftGo/domain/auth"
 	"driftGo/domain/user"
+	"driftGo/pkg/logger"
 	"net/http"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -57,19 +56,18 @@ func AuthenticateSession(next http.Handler) http.Handler {
 			return
 		}
 
-		authHeader := r.Header.Get("Authorization")
-
-		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			log.Error("Missing or malformed Authorization header")
-			errors.UnauthorizedErrorHandler(w, "Missing or malformed Authorization header")
+		cookie, err := r.Cookie("session_token")
+		if err != nil || cookie.Value == "" {
+			logger.Log.WithError(err).Error("Missing or invalid session cookie")
+			errors.UnauthorizedErrorHandler(w, "Missing or invalid session cookie")
 			return
 		}
 
-		sessionToken := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer"))
+		sessionToken := cookie.Value
 
 		response, err := authService.AuthenticateSession(r.Context(), sessionToken)
 		if err != nil {
-			log.WithError(err).Error("Invalid session")
+			logger.Log.WithError(err).Error("Invalid session")
 			errors.UnauthorizedErrorHandler(w, "Invalid session")
 			return
 		}
@@ -77,7 +75,7 @@ func AuthenticateSession(next http.Handler) http.Handler {
 		// Look up the internal user ID using the Stytch user ID
 		internalUser, err := userService.GetUserByStytchID(r.Context(), response.User.UserID)
 		if err != nil {
-			log.WithError(err).WithField("stytch_user_id", response.User.UserID).Error("Failed to find internal user")
+			logger.Log.WithError(err).WithField("stytch_user_id", response.User.UserID).Error("Failed to find internal user")
 			errors.UnauthorizedErrorHandler(w, "User not found")
 			return
 		}

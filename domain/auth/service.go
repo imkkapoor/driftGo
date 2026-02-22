@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"time"
 
 	"driftGo/api/common/utils"
 	"driftGo/config"
@@ -93,9 +94,11 @@ func (s *Service) AttachOAuth(ctx context.Context, userID, provider string) (*oa
 	return s.client.OAuth.Attach(ctx, params)
 }
 
-func (s *Service) AuthenticateOAuth(ctx context.Context, token string) (*oauth.AuthenticateResponse, error) {
+func (s *Service) AuthenticateOAuth(ctx context.Context, token, codeVerifier string) (*oauth.AuthenticateResponse, error) {
 	params := &oauth.AuthenticateParams{
-		Token: token,
+		Token:                  token,
+		CodeVerifier:           codeVerifier,
+		SessionDurationMinutes: 60,
 	}
 
 	return s.client.OAuth.Authenticate(ctx, params)
@@ -107,6 +110,10 @@ func (s *Service) AuthenticateSession(ctx context.Context, sessionToken string) 
 	}
 
 	return s.client.Sessions.Authenticate(ctx, params)
+}
+
+func (s *Service) AuthenticateJWTLocal(jwt string) (*sessions.Session, error) {
+	return s.client.Sessions.AuthenticateJWTLocal(jwt, 1*time.Hour)
 }
 
 func (s *Service) ExtendSession(ctx context.Context, sessionDurationMinutes int32) (*sessions.AuthenticateResponse, error) {

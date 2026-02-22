@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"driftGo/config"
+	"driftGo/pkg/logger"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/lib/pq"
 	"github.com/pressly/goose/v3"
-	log "github.com/sirupsen/logrus"
 )
 
 func runMigrations() error {
@@ -20,7 +20,7 @@ func runMigrations() error {
 	}
 	defer db.Close()
 
-	log.Info("Running database migrations...")
+	logger.Log.Info("Running database migrations...")
 	if err := goose.Up(db, "db/goose_migrations"); err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func runMigrations() error {
 func InitDB() *pgxpool.Pool {
 	dbURL := config.DatabaseURL
 	if dbURL == "" {
-		log.Fatal("DATABASE_URL is not set in config")
+		logger.Log.Fatal("DATABASE_URL is not set in config")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -38,17 +38,17 @@ func InitDB() *pgxpool.Pool {
 
 	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v", err)
+		logger.Log.Fatalf("Unable to connect to database: %v", err)
 	}
 
 	if err = pool.Ping(ctx); err != nil {
-		log.Fatalf("Database ping failed: %v", err)
+		logger.Log.Fatalf("Database ping failed: %v", err)
 	}
 
-	log.Info("Successfully connected to PostgreSQL")
+	logger.Log.Info("Successfully connected to PostgreSQL")
 
 	if err := runMigrations(); err != nil {
-		log.Fatalf("Failed to run migrations: %v", err)
+		logger.Log.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	return pool

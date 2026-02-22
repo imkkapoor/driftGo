@@ -3,11 +3,10 @@ package stytch
 import (
 	"driftGo/api/common/errors"
 	"driftGo/domain/user"
+	"driftGo/pkg/logger"
 	"encoding/json"
 	"io"
 	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -40,42 +39,42 @@ Events supported:
 func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.WithError(err).Error("Failed to read webhook request body")
+		logger.Log.WithError(err).Error("Failed to read webhook request body")
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
 	if err := VerifySignature(h.secret, r.Header, body); err != nil {
-		log.WithError(err).Error("Invalid webhook signature")
+		logger.Log.WithError(err).Error("Invalid webhook signature")
 		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid webhook signature", errors.ErrCodeAuthentication))
 		return
 	}
 
 	var event WebhookEvent
 	if err := json.Unmarshal(body, &event); err != nil {
-		log.WithError(err).Error("Failed to parse webhook event")
+		logger.Log.WithError(err).Error("Failed to parse webhook event")
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 		return
 	}
 
-	log.Info("Incoming stytch webhook event with action: ", event.Action, " and source: ", event.Source)
+	logger.Log.Info("Incoming stytch webhook event with action: ", event.Action, " and source: ", event.Source)
 
 	switch event.Action {
 	case "CREATE":
 		if event.User == nil {
-			log.Error("User data is missing in CREATE event")
+			logger.Log.Error("User data is missing in CREATE event")
 			errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 			return
 		}
 
 		existingUser, err := h.userService.GetUserByStytchID(r.Context(), event.StytchUserID)
 		if err != nil && err != user.ErrUserNotFound {
-			log.WithError(err).Error("Failed to check if user exists")
+			logger.Log.WithError(err).Error("Failed to check if user exists")
 			errors.InternalErrorHandler(w)
 			return
 		}
 		if existingUser != nil {
-			log.WithField("stytch_user_id", event.StytchUserID).Info("User already exists, skipping CREATE event")
+			logger.Log.WithField("stytch_user_id", event.StytchUserID).Info("User already exists, skipping CREATE event")
 			w.WriteHeader(http.StatusOK)
 			return
 		}
@@ -94,14 +93,14 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			event.User.Status,
 		)
 		if err != nil {
-			log.WithError(err).Error("Failed to create user")
+			logger.Log.WithError(err).Error("Failed to create user")
 			errors.InternalErrorHandler(w)
 			return
 		}
 
 	case "UPDATE":
 		if event.User == nil {
-			log.Error("User data is missing in UPDATE event")
+			logger.Log.Error("User data is missing in UPDATE event")
 			errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
 			return
 		}
@@ -120,20 +119,20 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 			event.User.Status,
 		)
 		if err != nil {
-			log.WithError(err).Error("Failed to update user")
+			logger.Log.WithError(err).Error("Failed to update user")
 			errors.InternalErrorHandler(w)
 			return
 		}
 
 	case "DELETE":
 		if err := h.userService.DeleteUser(r.Context(), event.StytchUserID); err != nil {
-			log.WithError(err).Error("Failed to process user deletion")
+			logger.Log.WithError(err).Error("Failed to process user deletion")
 			errors.InternalErrorHandler(w)
 			return
 		}
 
 	default:
-		log.WithField("action", event.Action).Info("Received unknown event type")
+		logger.Log.WithField("action", event.Action).Info("Received unknown event type")
 	}
 
 	w.WriteHeader(http.StatusOK)

@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"driftGo/pkg/logger"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -24,7 +24,7 @@ var (
 func init() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("No .env file found, reading from environment variables instead.")
+		logger.Log.Println("No .env file found, reading from environment variables instead.")
 	}
 
 	ProjectID = os.Getenv("STYTCH_PROJECT_ID")
@@ -40,11 +40,11 @@ func init() {
 	encryptionKeyStr := os.Getenv("ENCRYPTION_KEY")
 
 	if ProjectID == "" || Secret == "" {
-		log.Fatal("Missing required environment variables: STYTCH_PROJECT_ID and/or STYTCH_SECRET")
+		logger.Log.Fatal("Missing required environment variables: STYTCH_PROJECT_ID and/or STYTCH_SECRET")
 	}
 
 	if PlaidClientID == "" || PlaidSecret == "" {
-		log.Fatal("Missing required environment variables: PLAID_CLIENT_ID and/or PLAID_SECRET")
+		logger.Log.Fatal("Missing required environment variables: PLAID_CLIENT_ID and/or PLAID_SECRET")
 	}
 
 	if PlaidEnv == "" {
@@ -52,16 +52,16 @@ func init() {
 	}
 
 	if WebhookSecret == "" {
-		log.Fatal("Missing required environment variable: STYTCH_WEBHOOK_SECRET")
+		logger.Log.Fatal("Missing required environment variable: STYTCH_WEBHOOK_SECRET")
 	}
 
 	// Validate encryption key
 	if encryptionKeyStr == "" {
-		log.Fatal("Missing required environment variable: ENCRYPTION_KEY")
+		logger.Log.Fatal("Missing required environment variable: ENCRYPTION_KEY")
 	}
 
 	EncryptionKey = encryptionKeyStr
 	if len(EncryptionKey) < 32 {
-		log.Fatal("ENCRYPTION_KEY must be at least 32 characters long")
+		logger.Log.Fatal("ENCRYPTION_KEY must be at least 32 characters long")
 	}
 }
