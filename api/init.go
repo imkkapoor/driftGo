@@ -6,6 +6,7 @@ import (
 	"driftGo/db"
 	authDomain "driftGo/domain/auth"
 	linkDomain "driftGo/domain/link"
+	transferDomain "driftGo/domain/transfer"
 	userDomain "driftGo/domain/user"
 )
 
@@ -13,10 +14,11 @@ import (
 Services holds all the service instances
 */
 type Services struct {
-	Auth    *authDomain.Service
-	Link    *linkDomain.Service
-	User    *userDomain.Service
-	Webhook *webhook.WebhookHandler
+	Auth     *authDomain.Service
+	Link     *linkDomain.Service
+	Transfer *transferDomain.Service
+	User     *userDomain.Service
+	Webhook  *webhook.WebhookHandler
 }
 
 /*
@@ -40,6 +42,7 @@ func InitializeServices() (*Services, error) {
 		config.PlaidClientID,
 		config.PlaidSecret,
 		config.PlaidEnv,
+		config.PlaidWebhookURL,
 		userService,
 		pool,
 		config.EncryptionKey,
@@ -48,13 +51,28 @@ func InitializeServices() (*Services, error) {
 		return nil, err
 	}
 
+	// Initialize Transfer Service
+	transferService, err := transferDomain.NewService(
+		config.PlaidClientID,
+		config.PlaidSecret,
+		config.PlaidEnv,
+		userService,
+		linkService.GetAccessTokenByAccountID,
+		pool,
+		config.EncryptionKey,
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	// Initialize Webhook Handler
-	webhookHandler := webhook.NewWebhookHandler(userService, config.WebhookSecret)
+	webhookHandler := webhook.NewWebhookHandler(userService, config.WebhookSecret, transferService)
 
 	return &Services{
-		Auth:    authService,
-		Link:    linkService,
-		User:    userService,
-		Webhook: webhookHandler,
+		Auth:     authService,
+		Link:     linkService,
+		Transfer: transferService,
+		User:     userService,
+		Webhook:  webhookHandler,
 	}, nil
 }

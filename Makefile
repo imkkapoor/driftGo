@@ -6,7 +6,7 @@ MAIN_PATH=./cmd/server
 DOCKER_COMPOSE_FILE=docker-compose.yml
 MIGRATION_DIR=db/goose_migrations
 SQLC_CONFIG=sqlc.yaml
-SQLC_GEN_DIRS=domain/user domain/link
+SQLC_GEN_DIRS=domain/user domain/link domain/transfer
 
 # Database connection details (matching docker-compose.yml)
 DB_HOST=localhost

@@ -15,6 +15,7 @@ var (
 	PlaidClientID      string
 	PlaidSecret        string
 	PlaidEnv           string
+	PlaidWebhookURL    string
 	Env                string
 	DatabaseURL        string
 	WebhookSecret      string
@@ -34,6 +35,7 @@ func init() {
 	PlaidClientID = os.Getenv("PLAID_CLIENT_ID")
 	PlaidSecret = os.Getenv("PLAID_SECRET")
 	PlaidEnv = os.Getenv("PLAID_ENV")
+	PlaidWebhookURL = os.Getenv("PLAID_WEBHOOK_URL")
 	Env = os.Getenv("ENV")
 	DatabaseURL = os.Getenv("DATABASE_URL")
 	WebhookSecret = os.Getenv("STYTCH_WEBHOOK_SECRET")

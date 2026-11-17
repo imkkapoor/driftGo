@@ -25,12 +25,13 @@ type Service struct {
 	userService user.UserInterface
 	database    Querier
 	encryptor   *encryption.Encryptor
+	webhookURL  string
 }
 
 /*
 NewService creates a new link service with the provided Plaid credentials and database
 */
-func NewService(clientID, secret, env string, userService user.UserInterface, db *pgxpool.Pool, encryptionKey string) (*Service, error) {
+func NewService(clientID, secret, env, webhookURL string, userService user.UserInterface, db *pgxpool.Pool, encryptionKey string) (*Service, error) {
 	var plaidEnv plaid.Environment
 	switch env {
 	case "sandbox":
@@ -59,6 +60,7 @@ func NewService(clientID, secret, env string, userService user.UserInterface, db
 		userService: userService,
 		database:    New(db),
 		encryptor:   encryptor,
+		webhookURL:  webhookURL,
 	}, nil
 }
 
@@ -70,12 +72,15 @@ func (s *Service) CreateLinkToken(ctx context.Context) (*LinkTokenCallResponse, 
 	request := plaid.NewLinkTokenCreateRequest(
 		"drift",
 		"en",
-		// check country code
-		[]plaid.CountryCode{plaid.COUNTRYCODE_US, plaid.COUNTRYCODE_CA},
+		[]plaid.CountryCode{plaid.COUNTRYCODE_US},
 		user,
 	)
 
-	request.SetProducts([]plaid.Products{plaid.PRODUCTS_AUTH, plaid.PRODUCTS_IDENTITY})
+	request.SetProducts([]plaid.Products{plaid.PRODUCTS_AUTH, plaid.PRODUCTS_IDENTITY, plaid.PRODUCTS_TRANSFER})
+
+	if s.webhookURL != "" {
+		request.SetWebhook(s.webhookURL)
+	}
 
 	linkToken, _, err := s.client.PlaidApi.LinkTokenCreate(ctx).LinkTokenCreateRequest(*request).Execute()
 	if err != nil {

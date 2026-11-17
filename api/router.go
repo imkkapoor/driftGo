@@ -4,6 +4,7 @@ import (
 	"driftGo/api/auth"
 	"driftGo/api/link"
 	validateSessionMiddleware "driftGo/api/middleware"
+	"driftGo/api/transfer"
 	"driftGo/api/user"
 	"driftGo/api/webhook"
 	"driftGo/pkg/logger"
@@ -50,6 +51,11 @@ func SetupRoutes(r *chi.Mux, services *Services) chi.Router {
 		// Setup user routes
 		protected.Route("/user", func(r chi.Router) {
 			user.SetupRoutes(r, services.User)
+		})
+
+		// Setup transfer routes
+		protected.Route("/transfer", func(r chi.Router) {
+			transfer.SetupRoutes(r, services.Transfer)
 		})
 	})
 
