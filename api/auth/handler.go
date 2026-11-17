@@ -28,6 +28,7 @@ func SetupRoutes(r chi.Router, service *auth.Service) {
 	r.Route("/authenticate", func(r chi.Router) {
 		r.Post("/OAuth", handler.authenticateOAuthCall)
 		r.Post("/magiclink", handler.authenticateMagicLinkCall)
+		r.Post("/password", handler.authenticatePasswordCall)
 		r.Get("/session", handler.authenticateSessionCall)
 	})
 	r.Post("/setPassword", handler.setPasswordCall)
@@ -135,6 +136,56 @@ func (h *Handler) authenticateMagicLinkCall(w http.ResponseWriter, r *http.Reque
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session_jwt",
 		Value:    resp.SessionJWT,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		errors.InternalErrorHandler(w)
+		return
+	}
+}
+
+/*
+authenticatePasswordCall handles the request to authenticate a user with email and password.
+This is used in the password authentication flow.
+The request body should contain the email and password.
+*/
+func (h *Handler) authenticatePasswordCall(w http.ResponseWriter, r *http.Request) {
+	var authenticatePasswordCallRequest AuthenticatePasswordCallRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&authenticatePasswordCallRequest); err != nil {
+		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
+		return
+	}
+
+	if !validation.ValidateRequest(w, authenticatePasswordCallRequest) {
+		return
+	}
+
+	resp, err := h.service.Login(r.Context(), authenticatePasswordCallRequest.Email, authenticatePasswordCallRequest.Password)
+	if err != nil {
+		logger.Log.WithError(err).Error("Failed to authenticate password")
+		errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusUnauthorized, "Invalid email or password", errors.ErrCodeAuthentication))
+		return
+	}
+
+	// Set session cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_jwt",
+		Value:    resp.SessionJWT,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    resp.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   false, // Set to true in production with HTTPS

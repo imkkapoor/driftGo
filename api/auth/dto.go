@@ -30,6 +30,11 @@ type AuthenticateOAuthCallRequest struct {
 	CodeVerifier string `json:"code_verifier"`
 }
 
+type AuthenticatePasswordCallRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
 type ExtendSessionCallRequest struct {
 	SessionDurationMinutes int32 `json:"session_duration_minutes"`
 }
