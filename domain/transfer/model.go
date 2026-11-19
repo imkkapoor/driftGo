@@ -14,6 +14,7 @@ var (
 	ErrInvalidAmount      = errors.New("invalid transfer amount")
 	ErrAccountNotFound    = errors.New("account not found")
 	ErrAccountNotOwned    = errors.New("account does not belong to the current user")
+	ErrMissingLegalName   = errors.New("sender and receiver must have a first and last name on file")
 )
 
 /*

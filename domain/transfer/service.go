@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -101,10 +102,22 @@ func (s *Service) InitiateTransfer(ctx context.Context, senderAccountID string, 
 		return nil, ErrInvalidAmount
 	}
 
-	// Verify receiver exists
-	_, err := s.userService.GetUserByID(ctx, receiverUserID)
+	// Plaid requires the account holder's legal name on each leg.
+	sender, err := s.userService.GetUserByID(ctx, senderUserID)
+	if err != nil {
+		return nil, fmt.Errorf("sender user not found: %w", err)
+	}
+	senderName, err := legalName(sender)
+	if err != nil {
+		return nil, err
+	}
+
+	receiver, err := s.userService.GetUserByID(ctx, receiverUserID)
 	if err != nil {
 		return nil, fmt.Errorf("receiver user not found: %w", err)
+	}
+	if _, err := legalName(receiver); err != nil {
+		return nil, err
 	}
 
 	// Account IDs arrive in their stored (encrypted) form. Both must exist and
@@ -162,7 +175,7 @@ func (s *Service) InitiateTransfer(ctx context.Context, senderAccountID string, 
 	}
 
 	// Authorize the debit transfer (use decrypted account ID for Plaid)
-	authorizationID, err := s.authorizeTransfer(ctx, senderAccessToken, decryptedSenderAccountID, amount, plaid.TRANSFERTYPE_DEBIT, idempotencyKey+"-debit")
+	authorizationID, err := s.authorizeTransfer(ctx, senderAccessToken, decryptedSenderAccountID, senderName, amount, plaid.TRANSFERTYPE_DEBIT, idempotencyKey+"-debit")
 	if err != nil {
 		_ = s.database.UpdateTransferStatus(ctx, UpdateTransferStatusParams{
 			ID:            transfer.ID,
@@ -231,6 +244,15 @@ func (s *Service) InitiateCreditLeg(ctx context.Context, transferID int64) error
 		return fmt.Errorf("failed to decrypt receiver account ID: %w", err)
 	}
 
+	receiver, err := s.userService.GetUserByID(ctx, transfer.ReceiverUserID)
+	if err != nil {
+		return fmt.Errorf("receiver user not found: %w", err)
+	}
+	receiverName, err := legalName(receiver)
+	if err != nil {
+		return err
+	}
+
 	// Get the transfer amount as string
 	amountStr, err := NumericToString(transfer.Amount)
 	if err != nil {
@@ -243,7 +265,7 @@ func (s *Service) InitiateCreditLeg(ctx context.Context, transferID int64) error
 	}
 
 	// Authorize the credit transfer
-	authorizationID, err := s.authorizeTransfer(ctx, receiverAccessToken, receiverAccountID, amountStr, plaid.TRANSFERTYPE_CREDIT, transfer.IdempotencyKey+"-credit")
+	authorizationID, err := s.authorizeTransfer(ctx, receiverAccessToken, receiverAccountID, receiverName, amountStr, plaid.TRANSFERTYPE_CREDIT, transfer.IdempotencyKey+"-credit")
 	if err != nil {
 		_ = s.database.UpdateTransferStatus(ctx, UpdateTransferStatusParams{
 			ID:            transfer.ID,
@@ -282,14 +304,14 @@ func (s *Service) InitiateCreditLeg(ctx context.Context, transferID int64) error
 /*
 authorizeTransfer calls the Plaid Transfer Authorization Create API
 */
-func (s *Service) authorizeTransfer(ctx context.Context, accessToken, accountID, amount string, transferType plaid.TransferType, idempotencyKey string) (string, error) {
+func (s *Service) authorizeTransfer(ctx context.Context, accessToken, accountID, legalName, amount string, transferType plaid.TransferType, idempotencyKey string) (string, error) {
 	request := plaid.NewTransferAuthorizationCreateRequest(
 		accessToken,
 		accountID,
 		transferType,
 		plaid.TRANSFERNETWORK_SAME_DAY_ACH,
 		amount,
-		*plaid.NewTransferAuthorizationUserInRequest("Transfer User"),
+		*plaid.NewTransferAuthorizationUserInRequest(legalName),
 	)
 	request.SetAchClass(*plaid.ACHCLASS_PPD.Ptr())
 	request.SetIdempotencyKey(idempotencyKey)
@@ -336,6 +358,17 @@ func (s *Service) createTransfer(ctx context.Context, authorizationID, accessTok
 
 	plaidTransfer := response.GetTransfer()
 	return plaidTransfer.GetId(), nil
+}
+
+/*
+legalName returns the account holder's full name as Plaid expects it.
+*/
+func legalName(u *user.User) (string, error) {
+	name := strings.TrimSpace(strings.TrimSpace(u.FirstName.String) + " " + strings.TrimSpace(u.LastName.String))
+	if name == "" {
+		return "", ErrMissingLegalName
+	}
+	return name, nil
 }
 
 /*

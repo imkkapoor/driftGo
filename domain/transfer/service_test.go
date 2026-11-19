@@ -30,6 +30,12 @@ func TestCreditLegPaysReceiver(t *testing.T) {
 	if got := e.status(t, tr.ID); got != TransferStatusCreditPending {
 		t.Fatalf("status = %s, want credit_pending", got)
 	}
+	if debit := e.plaid.authCalls[0]; debit.User.LegalName != "Alice Anders" {
+		t.Errorf("debit legal name = %q, want Alice Anders", debit.User.LegalName)
+	}
+	if credits[0].User.LegalName != "Bob Brown" {
+		t.Errorf("credit legal name = %q, want Bob Brown", credits[0].User.LegalName)
+	}
 
 	e.plaid.addEvent("settled", e.creditTransferID(t, tr.ID))
 	if err := e.svc.ProcessTransferWebhook(ctx); err != nil {
@@ -165,5 +171,21 @@ func TestReturnAfterCompletionIsRecorded(t *testing.T) {
 	}
 	if got := e.status(t, tr.ID); got != TransferStatusReturned {
 		t.Fatalf("status = %s, want returned", got)
+	}
+}
+
+// Plaid needs a real legal name; refuse rather than send a placeholder.
+func TestTransferRequiresLegalNames(t *testing.T) {
+	e := newEnv(t)
+	if _, err := e.pool.Exec(context.Background(), "UPDATE users SET first_name = NULL, last_name = NULL WHERE id = $1", e.bob.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := e.svc.InitiateTransfer(as(e.alice), e.alice.EncryptedAccountID, e.bob.ID, e.bob.EncryptedAccountID, "50.00", "")
+	if err != ErrMissingLegalName {
+		t.Fatalf("err = %v, want ErrMissingLegalName", err)
+	}
+	if len(e.plaid.authCalls) != 0 {
+		t.Fatalf("expected no Plaid calls, got %d", len(e.plaid.authCalls))
 	}
 }

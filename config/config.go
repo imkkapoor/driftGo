@@ -3,6 +3,7 @@ package config
 import (
 	"driftGo/pkg/logger"
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -16,6 +17,7 @@ var (
 	PlaidSecret        string
 	PlaidEnv           string
 	PlaidWebhookURL    string
+	AllowedOrigins     []string
 	Env                string
 	DatabaseURL        string
 	WebhookSecret      string
@@ -36,6 +38,7 @@ func init() {
 	PlaidSecret = os.Getenv("PLAID_SECRET")
 	PlaidEnv = os.Getenv("PLAID_ENV")
 	PlaidWebhookURL = os.Getenv("PLAID_WEBHOOK_URL")
+	AllowedOrigins = parseOrigins(os.Getenv("ALLOWED_ORIGINS"))
 	Env = os.Getenv("ENV")
 	DatabaseURL = os.Getenv("DATABASE_URL")
 	WebhookSecret = os.Getenv("STYTCH_WEBHOOK_SECRET")
@@ -66,4 +69,29 @@ func init() {
 	if len(EncryptionKey) < 32 {
 		logger.Log.Fatal("ENCRYPTION_KEY must be at least 32 characters long")
 	}
+}
+
+/*
+SecureCookies reports whether cookies should be marked Secure (HTTPS only).
+They are in production; local development runs over plain HTTP.
+*/
+func SecureCookies() bool {
+	return Env == "production"
+}
+
+/*
+parseOrigins splits a comma-separated ALLOWED_ORIGINS value, defaulting to the
+local web app.
+*/
+func parseOrigins(raw string) []string {
+	var origins []string
+	for _, o := range strings.Split(raw, ",") {
+		if o = strings.TrimSpace(o); o != "" {
+			origins = append(origins, o)
+		}
+	}
+	if len(origins) == 0 {
+		return []string{"http://localhost:3000"}
+	}
+	return origins
 }

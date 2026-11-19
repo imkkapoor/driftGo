@@ -7,6 +7,7 @@ import (
 	"driftGo/api/transfer"
 	"driftGo/api/user"
 	"driftGo/api/webhook"
+	"driftGo/config"
 	"driftGo/pkg/logger"
 	"time"
 
@@ -20,7 +21,7 @@ func SetupRoutes(r *chi.Mux, services *Services) chi.Router {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(60 * time.Second))
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedOrigins:   config.AllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

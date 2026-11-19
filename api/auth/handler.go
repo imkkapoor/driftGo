@@ -3,6 +3,7 @@ package auth
 import (
 	"driftGo/api/common/errors"
 	"driftGo/api/common/validation"
+	"driftGo/config"
 	"driftGo/domain/auth"
 	"driftGo/pkg/logger"
 	"encoding/json"
@@ -138,7 +139,7 @@ func (h *Handler) authenticateMagicLinkCall(w http.ResponseWriter, r *http.Reque
 		Value:    resp.SessionJWT,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -179,7 +180,7 @@ func (h *Handler) authenticatePasswordCall(w http.ResponseWriter, r *http.Reques
 		Value:    resp.SessionJWT,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -188,7 +189,7 @@ func (h *Handler) authenticatePasswordCall(w http.ResponseWriter, r *http.Reques
 		Value:    resp.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -229,7 +230,7 @@ func (h *Handler) loginCall(w http.ResponseWriter, r *http.Request) {
 		Value:    resp.SessionJWT,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -238,7 +239,7 @@ func (h *Handler) loginCall(w http.ResponseWriter, r *http.Request) {
 		Value:    resp.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -268,7 +269,7 @@ func (h *Handler) logoutCall(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -278,7 +279,7 @@ func (h *Handler) logoutCall(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -343,7 +344,7 @@ func (h *Handler) authenticateOAuthCall(w http.ResponseWriter, r *http.Request) 
 		Value:    resp.SessionJWT,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
@@ -352,7 +353,7 @@ func (h *Handler) authenticateOAuthCall(w http.ResponseWriter, r *http.Request) 
 		Value:    resp.SessionToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false, // Set to true in production with HTTPS
+		Secure:   config.SecureCookies(),
 		SameSite: http.SameSiteStrictMode,
 	})
 
