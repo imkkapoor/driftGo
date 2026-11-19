@@ -11,6 +11,7 @@ import (
 	"math/big"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/plaid/plaid-go/v35/plaid"
@@ -26,8 +27,9 @@ type Service struct {
 	encryptor   *encryption.Encryptor
 	pool        *pgxpool.Pool
 
-	// Function to get access token by account ID — injected to avoid circular dependency with link domain
-	getAccessTokenByAccountID func(ctx context.Context, accountID string) (string, error)
+	// lookupAccount returns the owner and access token for a stored (encrypted) account ID.
+	// Injected to avoid a circular dependency with the link domain.
+	lookupAccount AccountLookup
 }
 
 /*
@@ -36,7 +38,7 @@ NewService creates a new transfer service with the provided Plaid credentials an
 func NewService(
 	clientID, secret, env string,
 	userService user.UserInterface,
-	getAccessTokenByAccountID func(ctx context.Context, accountID string) (string, error),
+	lookupAccount AccountLookup,
 	db *pgxpool.Pool,
 	encryptionKey string,
 ) (*Service, error) {
@@ -63,12 +65,12 @@ func NewService(
 	}
 
 	return &Service{
-		client:                    client,
-		userService:               userService,
-		database:                  New(db),
-		encryptor:                 encryptor,
-		pool:                      db,
-		getAccessTokenByAccountID: getAccessTokenByAccountID,
+		client:        client,
+		userService:   userService,
+		database:      New(db),
+		encryptor:     encryptor,
+		pool:          db,
+		lookupAccount: lookupAccount,
 	}, nil
 }
 
@@ -105,10 +107,28 @@ func (s *Service) InitiateTransfer(ctx context.Context, senderAccountID string, 
 		return nil, fmt.Errorf("receiver user not found: %w", err)
 	}
 
-	// Get sender's access token (account IDs are already encrypted, matching DB storage)
-	senderAccessToken, err := s.getAccessTokenByAccountID(ctx, senderAccountID)
+	// Account IDs arrive in their stored (encrypted) form. Both must exist and
+	// belong to the right people before any money moves.
+	senderOwnerID, senderAccessToken, err := s.lookupAccount(ctx, senderAccountID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sender access token: %w", err)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrAccountNotFound
+		}
+		return nil, fmt.Errorf("failed to look up sender account: %w", err)
+	}
+	if senderOwnerID != senderUserID {
+		return nil, ErrAccountNotOwned
+	}
+
+	receiverOwnerID, _, err := s.lookupAccount(ctx, receiverAccountID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrReceiverNoAccount
+		}
+		return nil, fmt.Errorf("failed to look up receiver account: %w", err)
+	}
+	if receiverOwnerID != receiverUserID {
+		return nil, ErrReceiverNoAccount
 	}
 
 	// Decrypt account IDs for Plaid API calls
@@ -194,16 +214,15 @@ func (s *Service) InitiateCreditLeg(ctx context.Context, transferID int64) error
 		return fmt.Errorf("failed to get transfer: %w", err)
 	}
 
-	// Decrypt receiver account ID
+	// Look up by the stored (encrypted) ID; decrypt only for the Plaid call.
+	_, receiverAccessToken, err := s.lookupAccount(ctx, transfer.ReceiverAccountID)
+	if err != nil {
+		return fmt.Errorf("failed to get receiver access token: %w", err)
+	}
+
 	receiverAccountID, err := s.encryptor.Decrypt(transfer.ReceiverAccountID)
 	if err != nil {
 		return fmt.Errorf("failed to decrypt receiver account ID: %w", err)
-	}
-
-	// Get receiver's access token
-	receiverAccessToken, err := s.getAccessTokenByAccountID(ctx, receiverAccountID)
-	if err != nil {
-		return fmt.Errorf("failed to get receiver access token: %w", err)
 	}
 
 	// Get the transfer amount as string

@@ -62,6 +62,8 @@ func (h *Handler) initiateTransfer(w http.ResponseWriter, r *http.Request) {
 			errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Cannot transfer to yourself", errors.ErrCodeInvalidRequest))
 		case transfer.ErrInvalidAmount:
 			errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Invalid transfer amount", errors.ErrCodeInvalidRequest))
+		case transfer.ErrAccountNotFound, transfer.ErrAccountNotOwned:
+			errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Sender account not found", errors.ErrCodeInvalidRequest))
 		case transfer.ErrReceiverNoAccount:
 			errors.RequestErrorHandler(w, errors.NewErrorWithCode(http.StatusBadRequest, "Receiver has no linked account", errors.ErrCodeInvalidRequest))
 		default:

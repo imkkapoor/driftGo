@@ -35,3 +35,8 @@ WHERE id = $1;
 -- name: DeleteLinkItemByItemID :exec
 DELETE FROM link_item
 WHERE item_id = $1; 
+-- name: GetAccountOwnerAndAccessToken :one
+SELECT la.user_id, li.access_token
+FROM link_account la
+JOIN link_item li ON la.item_id = li.id
+WHERE la.account_id = $1;

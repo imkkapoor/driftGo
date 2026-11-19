@@ -57,7 +57,7 @@ func InitializeServices() (*Services, error) {
 		config.PlaidSecret,
 		config.PlaidEnv,
 		userService,
-		linkService.GetAccessTokenByAccountID,
+		linkService.GetAccountOwnerAndAccessToken,
 		pool,
 		config.EncryptionKey,
 	)

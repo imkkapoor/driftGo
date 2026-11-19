@@ -113,6 +113,24 @@ func (s *Service) GetAccessTokenByAccountID(ctx context.Context, accountID strin
 }
 
 /*
+GetAccountOwnerAndAccessToken returns the owning user ID and decrypted access token
+for an account, looked up by its stored (encrypted) account ID.
+*/
+func (s *Service) GetAccountOwnerAndAccessToken(ctx context.Context, encryptedAccountID string) (int64, string, error) {
+	row, err := s.database.GetAccountOwnerAndAccessToken(ctx, encryptedAccountID)
+	if err != nil {
+		return 0, "", err
+	}
+
+	accessToken, err := s.encryptor.Decrypt(row.AccessToken)
+	if err != nil {
+		return 0, "", err
+	}
+
+	return row.UserID, accessToken, nil
+}
+
+/*
 exec
 */
 func (s *Service) DeleteLinkItemByID(ctx context.Context, ID int64) error {
