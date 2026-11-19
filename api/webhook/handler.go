@@ -20,10 +20,10 @@ type WebhookHandler struct {
 /*
 NewWebhookHandler creates a new webhook handler.
 */
-func NewWebhookHandler(userService *user.Service, secret string, transferService *transfer.Service) *WebhookHandler {
+func NewWebhookHandler(userService *user.Service, secret string, transferService *transfer.Service, plaidKeys plaidWebhook.KeyFetcher) *WebhookHandler {
 	return &WebhookHandler{
 		stytchHandler: stytch.NewHandler(userService, secret),
-		plaidHandler:  plaidWebhook.NewHandler(transferService),
+		plaidHandler:  plaidWebhook.NewHandler(transferService, plaidWebhook.NewVerifier(plaidKeys)),
 	}
 }
 

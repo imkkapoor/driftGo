@@ -66,7 +66,7 @@ func InitializeServices() (*Services, error) {
 	}
 
 	// Initialize Webhook Handler
-	webhookHandler := webhook.NewWebhookHandler(userService, config.WebhookSecret, transferService)
+	webhookHandler := webhook.NewWebhookHandler(userService, config.WebhookSecret, transferService, linkService.GetWebhookVerificationKey)
 
 	return &Services{
 		Auth:     authService,

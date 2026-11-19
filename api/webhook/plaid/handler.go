@@ -1,8 +1,8 @@
 package plaid
 
 import (
+	"context"
 	"driftGo/api/common/errors"
-	"driftGo/domain/transfer"
 	"driftGo/pkg/logger"
 	"encoding/json"
 	"io"
@@ -10,18 +10,27 @@ import (
 )
 
 /*
+TransferEventProcessor syncs and applies new Plaid transfer events.
+*/
+type TransferEventProcessor interface {
+	ProcessTransferWebhook(ctx context.Context) error
+}
+
+/*
 Handler handles Plaid webhook events for transfer status updates
 */
 type Handler struct {
-	transferService *transfer.Service
+	transferService TransferEventProcessor
+	verifier        *Verifier
 }
 
 /*
 NewHandler creates a new Plaid webhook handler
 */
-func NewHandler(transferService *transfer.Service) *Handler {
+func NewHandler(transferService TransferEventProcessor, verifier *Verifier) *Handler {
 	return &Handler{
 		transferService: transferService,
+		verifier:        verifier,
 	}
 }
 
@@ -35,6 +44,12 @@ func (h *Handler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Log.WithError(err).Error("Failed to read Plaid webhook request body")
 		errors.RequestErrorHandler(w, errors.NewInvalidFormatError())
+		return
+	}
+
+	if err := h.verifier.Verify(r.Context(), r.Header.Get("Plaid-Verification"), body); err != nil {
+		logger.Log.WithError(err).Warn("Rejected Plaid webhook")
+		errors.UnauthorizedErrorHandler(w, "Invalid webhook signature")
 		return
 	}
 
