@@ -214,6 +214,12 @@ func (s *Service) InitiateCreditLeg(ctx context.Context, transferID int64) error
 		return fmt.Errorf("failed to get transfer: %w", err)
 	}
 
+	// Only start the credit leg once, and only from debit_settled.
+	if transfer.CreditTransferID.Valid || transfer.Status != TransferStatusDebitSettled {
+		logger.Log.WithField("transfer_id", transfer.ID).WithField("status", transfer.Status).Info("Credit leg already started or not ready, skipping")
+		return nil
+	}
+
 	// Look up by the stored (encrypted) ID; decrypt only for the Plaid call.
 	_, receiverAccessToken, err := s.lookupAccount(ctx, transfer.ReceiverAccountID)
 	if err != nil {

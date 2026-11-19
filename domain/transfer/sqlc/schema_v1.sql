@@ -72,3 +72,9 @@ CREATE TABLE IF NOT EXISTS transfer (
     completed_at TIMESTAMPTZ,
     CONSTRAINT chk_no_self_transfer CHECK (sender_user_id != receiver_user_id)
 );
+
+CREATE TABLE IF NOT EXISTS transfer_event_cursor (
+    id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    last_event_id INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);

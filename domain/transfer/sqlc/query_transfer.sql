@@ -73,3 +73,14 @@ SET status = 'completed',
     updated_at = CURRENT_TIMESTAMP,
     completed_at = CURRENT_TIMESTAMP
 WHERE id = $1;
+
+-- name: LockTransferEventCursor :one
+SELECT last_event_id FROM transfer_event_cursor
+WHERE id = 1
+FOR UPDATE;
+
+-- name: UpdateTransferEventCursor :exec
+UPDATE transfer_event_cursor
+SET last_event_id = $1,
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = 1;
